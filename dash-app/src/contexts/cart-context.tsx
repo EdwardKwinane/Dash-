@@ -1,140 +1,159 @@
 "use client";
 
-import React, { createContext, useContext, useReducer, useEffect } from "react";
-import { Product } from "@/types/product";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useSyncExternalStore,
+} from "react";
+import type { Product } from "@/types/product";
+import { getProductById } from "@/lib/data/products";
+import {
+  CART_STORAGE_KEY,
+  EMPTY_CART_STATE,
+  cartReducer,
+  parseStoredCart,
+  resolveAddItem,
+  serializeCart,
+  type AddItemResult,
+  type CartAction,
+  type CartState,
+} from "@/lib/cart";
 
-export interface CartItem {
-  product: Product;
-  quantity: number;
-  selectedVariant?: string;
-}
-
-interface CartState {
-  items: CartItem[];
-  totalItems: number;
-  subtotal: number;
-}
-
-type CartAction =
-  | { type: "ADD_ITEM"; payload: { product: Product; quantity: number; variant?: string } }
-  | { type: "REMOVE_ITEM"; payload: { productId: string; variant?: string } }
-  | { type: "UPDATE_QUANTITY"; payload: { productId: string; quantity: number; variant?: string } }
-  | { type: "CLEAR_CART" }
-  | { type: "LOAD_CART"; payload: CartItem[] };
-
-const CartContext = createContext<{
+interface CartContextValue {
   state: CartState;
-  addItem: (product: Product, quantity?: number, variant?: string) => void;
+  /** False during the first paint so UI can avoid acting on the empty cart. */
+  isHydrated: boolean;
+  addItem: (
+    product: Product,
+    quantity?: number,
+    variant?: string,
+  ) => AddItemResult;
   removeItem: (productId: string, variant?: string) => void;
-  updateQuantity: (productId: string, quantity: number, variant?: string) => void;
+  updateQuantity: (
+    productId: string,
+    quantity: number,
+    variant?: string,
+  ) => void;
   clearCart: () => void;
-} | undefined>(undefined);
+}
 
-function cartReducer(state: CartState, action: CartAction): CartState {
-  switch (action.type) {
-    case "ADD_ITEM": {
-      const { product, quantity, variant } = action.payload;
-      const existingIndex = state.items.findIndex(
-        item => item.product.id === product.id && item.selectedVariant === variant
-      );
+const CartContext = createContext<CartContextValue | undefined>(undefined);
 
-      let newItems: CartItem[];
-      if (existingIndex > -1) {
-        newItems = [...state.items];
-        newItems[existingIndex].quantity += quantity;
-      } else {
-        newItems = [...state.items, { product, quantity, selectedVariant: variant }];
-      }
+const noopSubscribe = () => () => {};
 
-      const totalItems = newItems.reduce((sum, item) => sum + item.quantity, 0);
-      const subtotal = newItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-
-      return { items: newItems, totalItems, subtotal };
-    }
-    case "REMOVE_ITEM": {
-      const newItems = state.items.filter(
-        item => !(item.product.id === action.payload.productId && item.selectedVariant === action.payload.variant)
-      );
-      const totalItems = newItems.reduce((sum, item) => sum + item.quantity, 0);
-      const subtotal = newItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-      return { items: newItems, totalItems, subtotal };
-    }
-    case "UPDATE_QUANTITY": {
-      if (action.payload.quantity <= 0) {
-        const newItems = state.items.filter(
-          item => !(item.product.id === action.payload.productId && item.selectedVariant === action.payload.variant)
-        );
-        const totalItems = newItems.reduce((sum, item) => sum + item.quantity, 0);
-        const subtotal = newItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-        return { items: newItems, totalItems, subtotal };
-      }
-
-      const newItems = state.items.map(item =>
-        item.product.id === action.payload.productId && item.selectedVariant === action.payload.variant
-          ? { ...item, quantity: action.payload.quantity }
-          : item
-      );
-      const totalItems = newItems.reduce((sum, item) => sum + item.quantity, 0);
-      const subtotal = newItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-      return { items: newItems, totalItems, subtotal };
-    }
-    case "CLEAR_CART":
-      return { items: [], totalItems: 0, subtotal: 0 };
-    case "LOAD_CART": {
-      const items = action.payload;
-      const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-      const subtotal = items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-      return { items, totalItems, subtotal };
-    }
-    default:
-      return state;
-  }
+/**
+ * Hydration flag without a `setState` effect: the server snapshot is `false`,
+ * the client snapshot is `true`. UI can therefore avoid acting on the empty
+ * server-rendered cart without causing a cascading render.
+ */
+function useIsHydrated(): boolean {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  );
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(cartReducer, { items: [], totalItems: 0, subtotal: 0 });
+  const [state, rawDispatch] = useReducer(cartReducer, EMPTY_CART_STATE);
+  const isHydrated = useIsHydrated();
+  const hasRestored = useRef(false);
 
-  useEffect(() => {
-    const savedCart = localStorage.getItem("dash-cart");
-    if (savedCart) {
-      try {
-        const parsed = JSON.parse(savedCart);
-        dispatch({ type: "LOAD_CART", payload: parsed });
-      } catch {
-        console.error("Failed to load cart");
-      }
+  // Keep an always-current snapshot so rapid clicks validate against the
+  // latest state rather than the state captured by the last render.
+  const stateRef = useRef(state);
+
+  // Persist from the dispatch itself rather than from an effect. An effect
+  // would fire once with the empty server-rendered cart (and again under
+  // StrictMode) and could overwrite a returning shopper's saved cart before
+  // the restore lands.
+  const dispatch = useCallback((action: CartAction) => {
+    const next = cartReducer(stateRef.current, action);
+    stateRef.current = next;
+    rawDispatch(action);
+
+    try {
+      window.localStorage.setItem(CART_STORAGE_KEY, serializeCart(next.items));
+    } catch {
+      // Storage can be unavailable (private mode, quota). The cart still works
+      // for this session; persistence is a convenience, not a requirement.
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("dash-cart", JSON.stringify(state.items));
-  }, [state.items]);
+    if (hasRestored.current) return;
+    hasRestored.current = true;
 
-  const addItem = (product: Product, quantity = 1, variant?: string) => {
-    if (quantity > product.stock) {
-      alert("Not enough stock available");
-      return;
+    const items = parseStoredCart(
+      window.localStorage.getItem(CART_STORAGE_KEY),
+      getProductById,
+    );
+
+    if (items.length > 0) {
+      dispatch({ type: "LOAD_CART", payload: items });
     }
-    dispatch({ type: "ADD_ITEM", payload: { product, quantity, variant } });
-  };
+  }, [dispatch]);
 
-  const removeItem = (productId: string, variant?: string) => {
-    dispatch({ type: "REMOVE_ITEM", payload: { productId, variant } });
-  };
+  const addItem = useCallback(
+    (product: Product, quantity = 1, variant?: string): AddItemResult => {
+      const result = resolveAddItem(
+        stateRef.current,
+        product,
+        quantity,
+        variant,
+      );
 
-  const updateQuantity = (productId: string, quantity: number, variant?: string) => {
-    dispatch({ type: "UPDATE_QUANTITY", payload: { productId, quantity, variant } });
-  };
+      if (result.ok) {
+        dispatch({
+          type: "ADD_ITEM",
+          payload: { product, quantity: result.quantity, variant },
+        });
+      }
 
-  const clearCart = () => {
-    dispatch({ type: "CLEAR_CART" });
-  };
-
-  return (
-    <CartContext.Provider value={{ state, addItem, removeItem, updateQuantity, clearCart }}>
-      {children}
-    </CartContext.Provider>
+      return result;
+    },
+    [dispatch],
   );
+
+  const removeItem = useCallback(
+    (productId: string, variant?: string) => {
+      dispatch({ type: "REMOVE_ITEM", payload: { productId, variant } });
+    },
+    [dispatch],
+  );
+
+  const updateQuantity = useCallback(
+    (productId: string, quantity: number, variant?: string) => {
+      dispatch({
+        type: "UPDATE_QUANTITY",
+        payload: { productId, quantity, variant },
+      });
+    },
+    [dispatch],
+  );
+
+  const clearCart = useCallback(() => {
+    dispatch({ type: "CLEAR_CART" });
+  }, [dispatch]);
+
+  const value = useMemo(
+    () => ({
+      state,
+      isHydrated,
+      addItem,
+      removeItem,
+      updateQuantity,
+      clearCart,
+    }),
+    [state, isHydrated, addItem, removeItem, updateQuantity, clearCart],
+  );
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
 export function useCart() {

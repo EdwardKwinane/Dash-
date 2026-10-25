@@ -1,5 +1,74 @@
 # CHANGELOG
 
+## Storefront quality sprint — search, catalogue, cart, demo checkout, tests and CI (2026-10-25)
+
+Branch: `feature/storefront-quality-sprint` (from `75b4b44`). Not pushed at the time of writing; `main` is unchanged.
+
+### Pre-existing defects found and fixed
+- **Search was decorative.** The header search input did not navigate anywhere, and no `/search` route existed. The homepage and product pages advertised search that could not work.
+- **Catalogue filters and sorting did not exist.** `/products` rendered every product in source order; there was no category, brand, price, availability or sort control.
+- **Unknown product slugs returned HTTP 200.** `notFound()` was streamed after the shell had been sent, so `/products/does-not-exist` was not a real 404.
+- **`alert()` was the only add-to-cart feedback**, and it was the only validation feedback on quantity/stock.
+- **Cart could exceed stock** (client-side quantity was not clamped) and persistence was restored in an effect that could overwrite a returning shopper's saved cart.
+- **Checkout invented an R150 delivery fee** and showed no tax line, so the totals were not honest. It also allowed duplicate submits and used browser-native validation only.
+- **Hydration could fail silently in development.** Next 16 trusts only the hostname it was started on; requests from `127.0.0.1` were blocked, so React never hydrated (Playwright and `curl` use `127.0.0.1`).
+- **A streamed duplicate DOM node appeared in roughly 40% of production loads.** The root `loading.tsx` left a `<div hidden id="S:0">` staging node containing a second copy of the page, duplicating element ids and text.
+- **`/favicon.ico` returned 404** on every page.
+- **Next.js warned that the header/footer logo had only one dimension changed.**
+- **Heading order skipped from `h1` to `h3`** in the footer (and therefore on every page).
+- **Dead navigation links** (`/account`, `/wishlist`) pointed at routes that do not exist.
+- **Copy implied capabilities that do not exist**: "AI-powered" in metadata/footer, and an assistant section that read as if it were live.
+
+### Search and discovery
+- New `/search` route (`src/app/search/page.tsx`) with server-side query evaluation over the in-repo catalogue.
+- `src/lib/catalog.ts`: query parsing/validation, diacritic- and case-insensitive normalisation, whitespace collapsing, multi-token matching across name, brand, category, subcategory, SKU, description, key selling points and specification values, filters (category, brand, price band, availability) and sorting (featured, price ascending/descending, name).
+- Search state lives entirely in the URL (`?q=&category=&brand=&price=&stock=&sort=`), so results are shareable, reload-safe and work without JavaScript. Invalid values degrade to defaults rather than erroring.
+- `SearchBar`, `CatalogFilters`, `CatalogSort` and `ProductResults` components: labelled controls, a `role="status"` result count, explicit empty state with "Clear search and filters", and no full page reloads.
+- `/products` now supports the same filters and sorting with accurate counts.
+- Category pages link into the filtered catalogue instead of rendering an ad-hoc list.
+
+### Product detail
+- Converted to an async server component with `generateStaticParams`, per-product metadata, `notFound()` and `dynamicParams = false`, so unknown slugs return a real 404.
+- Client `ProductPurchasePanel` replaces `alert()` with inline, `role="status"`/`role="alert"` feedback, a quantity stepper clamped to `1..stock`, a disabled add button at stock, and an explicit "out of stock" state.
+
+### Cart
+- `src/lib/cart.ts` holds the reducer, stock clamping, `parseStoredCart` (rejects malformed JSON and unknown products, clamps quantities) and serialisation.
+- `cart-context.tsx` restores once, persists from the dispatch itself, keeps a synchronous state snapshot for rapid clicks, and exposes `isHydrated` via `useSyncExternalStore` (server snapshot `false`, client `true`) — no `setState` in an effect and no hydration mismatch.
+- Cart page: reliable increment/decrement/remove, per-line and order totals derived from the same state, disabled controls at stock, accessible labels, empty state.
+
+### Pricing and demo checkout
+- All prices remain integer cents and are formatted by `src/lib/format.ts` (`R1 234.56` style with deterministic separators).
+- Checkout distinguishes subtotal from delivery and tax: both are shown as "not configured in this demo", and the total equals the subtotal. The invented R150 shipping charge is gone.
+- `src/lib/validation.ts` provides field-level validation (email, names, address, city, SA province, 4-digit postal code, SA phone) with inline messages, `aria-invalid`/`aria-describedby`, an error summary, focus moved to the first invalid field, and a duplicate-submit guard.
+- Empty carts cannot check out. Success is shown only after the demo submit, with a generated `DASH-DEMO-XXXXXX` reference validated on the success page. No card data is requested, stored or transmitted; no payment, stock reservation, email or fulfilment is claimed.
+
+### Accessibility, responsiveness and polish
+- Landmarks: one `main`, one `banner`, one `contentinfo`, labelled navigation; footer column headings changed from `h3` to `h2` to remove the heading-level skip.
+- Accessible mobile menu (`aria-expanded`, `aria-controls`, Escape to close, closes on navigation) and a mobile-visible search field.
+- Every image has meaningful alt text; the logo and product images use `next/image` (`fill` inside a sized wrapper for the logo), removing the dimension warning and the remote-image lint suppressions.
+- Empty, loading, error and not-found states added (`not-found.tsx`, `error.tsx`); live regions announce cart and validation changes.
+- Mobile 390 px check: `scrollWidth === clientWidth` (390), no horizontal overflow.
+- Removed dead `/account` and `/wishlist` links; replaced implied-live assistant copy with explicit "planned" wording.
+
+### Tests
+- Added Vitest 5 + React Testing Library + jsdom: 12 files / **100 tests** covering ZAR formatting, catalogue normalisation/search/filter/sort/URL building, cart reducer/clamping/persistence parsing, checkout validation and reference generation, and component behaviour (search bar, filters, results, header, purchase panel, cart page, checkout page, cart provider).
+- Added Playwright E2E: 6 tests covering search → product → cart → demo checkout, URL-driven filters/sorting, empty search + 404, empty-cart checkout guard, mobile navigation/search, and mobile layout without overflow.
+- Test data is the deterministic in-repo catalogue; no network or production data is used.
+
+### CI
+- Added `.github/workflows/ci.yml`: Node 24, `npm ci`, lint, type-check, unit/component tests and production build in a `quality` job; a dependent `e2e` job installs Playwright Chromium and runs the E2E suite, uploading the report on failure.
+- Limits: E2E runs Chromium only (local runs use installed Google Chrome); no deployment, preview or security-scanning jobs exist yet.
+
+### Verified
+- `npm test` → 12 files / 100 tests passed.
+- `npx eslint .` → clean (exit 0).
+- `npx tsc --noEmit` → exit 0.
+- `npm run build` → success; 29 static/SSG pages generated.
+- Production server route checks (`next start --port 3100`): `/`, `/search`, `/search?q=sony`, `/search?q=zzzz`, `/products`, `/products?category=laptops-computers&sort=price-desc`, `/products/samsung-galaxy-s25-ultra`, `/categories/laptops-computers`, `/cart`, `/checkout`, `/checkout/success`, `/checkout/success?ref=DASH-DEMO-ABC123`, `/about`, `/contact`, `/shipping`, `/returns`, `/warranty`, `/privacy`, `/terms`, `/icon.jpg`, `/logo.jpg` → 200; `/products/does-not-exist` → 404.
+- Playwright: 6/6 passed, repeated across consecutive full-suite runs.
+- Browser console scan on 7 routes: no errors or warnings (the 404 page logs the expected failed document request); no duplicate element ids; no heading-level skips; all images have alt text; all inputs are labelled.
+- Known limitation: `npx vitest` cannot run directly from the `#` path; use `npm test` (see ADR-010). CI is unaffected.
+
 ## Repository history purge — published (2026-10-25)
 
 ### Published

@@ -6,6 +6,9 @@
     "dev": "cd dash-app && npx next dev",
     "build": "cd dash-app && npx next build",
     "start": "cd dash-app && npx next start",
-    "lint": "cd dash-app && npx eslint ."
+    "lint": "cd dash-app && npx eslint .",
+    "typecheck": "cd dash-app && npx tsc --noEmit",
+    "test": "cd dash-app && npm test",
+    "test:e2e": "cd dash-app && npx playwright test"
   }
 }

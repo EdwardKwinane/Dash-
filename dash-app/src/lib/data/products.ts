@@ -168,6 +168,11 @@ export const products: Product[] = [
   },
 ];
 
-export function formatPrice(priceInCents: number): string {
-  return `R${(priceInCents / 100).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+/** Product lookup used by routes, cart restore and tests. */
+export function getProductById(id: string): Product | undefined {
+  return products.find((product) => product.id === id);
+}
+
+export function getProductBySlug(slug: string): Product | undefined {
+  return products.find((product) => product.slug === slug);
 }

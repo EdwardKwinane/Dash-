@@ -60,6 +60,12 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
             {categoryProducts.length === 1 ? "product" : "products"} · seeded
             demo catalogue
           </p>
+          <Link
+            href={`/products?category=${category.slug}`}
+            className="mt-3 inline-block text-sm font-medium text-brand hover:text-brand-hover"
+          >
+            Filter and sort this category
+          </Link>
         </header>
 
         {categoryProducts.length === 0 ? (

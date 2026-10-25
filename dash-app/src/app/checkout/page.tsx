@@ -1,48 +1,116 @@
 "use client";
 
-import { useCart } from "@/contexts/cart-context";
-import { formatPrice } from "@/lib/data/products";
-import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useId, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { useCart } from "@/contexts/cart-context";
+import { formatPrice } from "@/lib/format";
+import {
+  EMPTY_CHECKOUT_FORM,
+  SA_PROVINCES,
+  createOrderReference,
+  hasCheckoutErrors,
+  validateCheckout,
+  type CheckoutErrors,
+  type CheckoutField,
+  type CheckoutFormData,
+} from "@/lib/validation";
+import { cn } from "@/lib/utils";
+
+const FIELD_ORDER: CheckoutField[] = [
+  "email",
+  "firstName",
+  "lastName",
+  "address",
+  "city",
+  "province",
+  "postalCode",
+  "phone",
+];
+
+const inputClass =
+  "w-full rounded-card border border-line bg-white px-4 py-2 text-ink placeholder:text-ink-muted focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30";
 
 export default function CheckoutPage() {
-  const { state, clearCart } = useCart();
+  const { state, isHydrated, clearCart } = useCart();
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    email: "",
-    firstName: "",
-    lastName: "",
-    address: "",
-    city: "",
-    province: "",
-    postalCode: "",
-    phone: "",
-  });
+  const [formData, setFormData] = useState<CheckoutFormData>(EMPTY_CHECKOUT_FORM);
+  const [errors, setErrors] = useState<CheckoutErrors>({});
   const [isProcessing, setIsProcessing] = useState(false);
+  const submittingRef = useRef(false);
+  const errorSummaryId = useId();
 
   const isEmpty = state.items.length === 0;
 
-  // Redirect in an effect, never during render: running router.push() while
-  // rendering breaks server prerendering (location is not defined).
-  useEffect(() => {
-    if (isEmpty) {
-      router.push("/cart");
-    }
-  }, [isEmpty, router]);
+  const handleChange = (
+    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
+    const field = event.target.name as CheckoutField;
+    setFormData((previous) => ({ ...previous, [field]: event.target.value }));
+    setErrors((previous) => {
+      if (!previous[field]) return previous;
+      const next = { ...previous };
+      delete next[field];
+      return next;
+    });
+  };
 
-  if (isEmpty) {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (submittingRef.current) return;
+
+    const nextErrors = validateCheckout(formData);
+    if (hasCheckoutErrors(nextErrors)) {
+      setErrors(nextErrors);
+      const firstInvalid = FIELD_ORDER.find((field) => nextErrors[field]);
+      if (firstInvalid) {
+        document.getElementById(firstInvalid)?.focus();
+      }
+      return;
+    }
+
+    submittingRef.current = true;
+    setIsProcessing(true);
+    setErrors({});
+
+    // Demo only: no network request and no payment. The short delay exists so
+    // the disabled/pending state is observable.
+    await new Promise((resolve) => setTimeout(resolve, 700));
+
+    const reference = createOrderReference();
+    clearCart();
+    router.push(`/checkout/success?ref=${encodeURIComponent(reference)}`);
+  };
+
+  if (!isHydrated) {
     return (
       <div className="bg-white">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-          <h1 className="text-3xl font-bold text-[#0A0A0A] mb-4">
+        <div className="mx-auto max-w-content px-4 py-8 sm:px-6 lg:px-8">
+          <h1 className="mb-8 text-3xl font-bold text-ink">Checkout</h1>
+          <p role="status" className="text-ink-muted">
+            Loading your cart…
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isEmpty && !isProcessing) {
+    return (
+      <div className="bg-white">
+        <div className="mx-auto max-w-content px-4 py-16 text-center sm:px-6 lg:px-8">
+          <h1 className="mb-4 text-3xl font-bold text-ink">
             Your cart is empty
           </h1>
-          <p className="text-[#52525B] mb-8">
-            Add a product before continuing to checkout.
+          <p className="mb-8 text-ink-muted">
+            Add a product before starting the demo checkout.
           </p>
-          <Button asChild className="bg-[#A855F7] hover:bg-[#9333EA] text-white">
+          <Button
+            asChild
+            className="h-auto rounded-card bg-brand px-6 py-3 text-white hover:bg-brand-hover"
+          >
             <Link href="/products">Browse products</Link>
           </Button>
         </div>
@@ -50,174 +118,297 @@ export default function CheckoutPage() {
     );
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsProcessing(true);
-
-    // The reference is created here, in an event handler, so the confirmation
-    // page can render a stable value during prerendering and hydration.
-    const orderReference = `DASH-${Math.random()
-      .toString(36)
-      .slice(2, 11)
-      .toUpperCase()}`;
-
-    // Simulate processing
-    setTimeout(() => {
-      clearCart();
-      router.push(`/checkout/success?ref=${orderReference}`);
-    }, 1500);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+  const errorCount = Object.keys(errors).length;
 
   return (
     <div className="bg-white">
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-[#0A0A0A] mb-8">Checkout</h1>
-        
-        <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
-              <div className="border border-[#E5E7EB] rounded-lg p-6 bg-white">
-                <h2 className="text-xl font-bold text-[#0A0A0A] mb-4">Contact Information</h2>
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="Email address"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A855F7]"
-                />
-              </div>
+      <div className="mx-auto max-w-content px-4 py-8 sm:px-6 lg:px-8">
+        <h1 className="mb-2 text-3xl font-bold text-ink">Demo checkout</h1>
+        <p className="mb-8 max-w-2xl text-ink-muted">
+          This form validates a delivery address and shows a confirmation. No
+          payment is taken, no card details are requested, and no order is sent
+          to a server.
+        </p>
 
-              <div className="border border-[#E5E7EB] rounded-lg p-6 bg-white">
-                <h2 className="text-xl font-bold text-[#0A0A0A] mb-4">Shipping Address</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <input
-                    type="text"
-                    name="firstName"
-                    placeholder="First name"
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          aria-describedby={errorCount > 0 ? errorSummaryId : undefined}
+        >
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+            <div className="space-y-6 lg:col-span-2">
+              {errorCount > 0 && (
+                <div
+                  id={errorSummaryId}
+                  role="alert"
+                  className="rounded-card border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm text-[#991b1b]"
+                >
+                  Please correct the highlighted{" "}
+                  {errorCount === 1 ? "field" : `${errorCount} fields`} below.
+                </div>
+              )}
+
+              <fieldset className="rounded-card border border-line bg-white p-6">
+                <legend className="px-1 text-xl font-bold text-ink">
+                  Contact information
+                </legend>
+                <div className="mt-4">
+                  <Field
+                    id="email"
+                    label="Email address"
+                    type="email"
+                    autoComplete="email"
+                    value={formData.email}
+                    error={errors.email}
+                    onChange={handleChange}
+                    placeholder="name@example.co.za"
+                  />
+                </div>
+              </fieldset>
+
+              <fieldset className="rounded-card border border-line bg-white p-6">
+                <legend className="px-1 text-xl font-bold text-ink">
+                  Delivery address
+                </legend>
+                <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <Field
+                    id="firstName"
+                    label="First name"
+                    autoComplete="given-name"
                     value={formData.firstName}
+                    error={errors.firstName}
                     onChange={handleChange}
-                    required
-                    className="px-4 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A855F7]"
                   />
-                  <input
-                    type="text"
-                    name="lastName"
-                    placeholder="Last name"
+                  <Field
+                    id="lastName"
+                    label="Last name"
+                    autoComplete="family-name"
                     value={formData.lastName}
+                    error={errors.lastName}
                     onChange={handleChange}
-                    required
-                    className="px-4 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A855F7]"
                   />
-                  <input
-                    type="text"
-                    name="address"
-                    placeholder="Address"
+                  <Field
+                    id="address"
+                    label="Street address"
+                    autoComplete="street-address"
                     value={formData.address}
+                    error={errors.address}
                     onChange={handleChange}
-                    required
-                    className="md:col-span-2 px-4 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A855F7]"
+                    className="md:col-span-2"
                   />
-                  <input
-                    type="text"
-                    name="city"
-                    placeholder="City"
+                  <Field
+                    id="city"
+                    label="City or town"
+                    autoComplete="address-level2"
                     value={formData.city}
+                    error={errors.city}
                     onChange={handleChange}
-                    required
-                    className="px-4 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A855F7]"
                   />
-                  <input
-                    type="text"
-                    name="province"
-                    placeholder="Province"
-                    value={formData.province}
-                    onChange={handleChange}
-                    required
-                    className="px-4 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A855F7]"
-                  />
-                  <input
-                    type="text"
-                    name="postalCode"
-                    placeholder="Postal code"
+                  <div>
+                    <label
+                      htmlFor="province"
+                      className="mb-1 block text-sm font-medium text-ink"
+                    >
+                      Province
+                    </label>
+                    <select
+                      id="province"
+                      name="province"
+                      value={formData.province}
+                      onChange={handleChange}
+                      autoComplete="address-level1"
+                      aria-invalid={errors.province ? true : undefined}
+                      aria-describedby={
+                        errors.province ? "province-error" : undefined
+                      }
+                      className={cn(
+                        inputClass,
+                        errors.province && "border-[#b91c1c]",
+                      )}
+                    >
+                      <option value="">Select a province</option>
+                      {SA_PROVINCES.map((province) => (
+                        <option key={province} value={province}>
+                          {province}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.province && (
+                      <p
+                        id="province-error"
+                        className="mt-1 text-sm text-[#b91c1c]"
+                      >
+                        {errors.province}
+                      </p>
+                    )}
+                  </div>
+                  <Field
+                    id="postalCode"
+                    label="Postal code"
+                    autoComplete="postal-code"
+                    inputMode="numeric"
                     value={formData.postalCode}
+                    error={errors.postalCode}
                     onChange={handleChange}
-                    required
-                    className="px-4 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A855F7]"
+                    placeholder="0000"
                   />
-                  <input
+                  <Field
+                    id="phone"
+                    label="Phone number"
                     type="tel"
-                    name="phone"
-                    placeholder="Phone number"
+                    autoComplete="tel"
                     value={formData.phone}
+                    error={errors.phone}
                     onChange={handleChange}
-                    required
-                    className="md:col-span-2 px-4 py-2 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A855F7]"
+                    placeholder="082 123 4567"
+                    className="md:col-span-2"
                   />
                 </div>
-              </div>
+              </fieldset>
 
-              <div className="border border-[#E5E7EB] rounded-lg p-6 bg-white">
-                <h2 className="text-xl font-bold text-[#0A0A0A] mb-4">Payment</h2>
-                <p className="text-[#52525B] mb-4">Demo Checkout - No real payment will be processed</p>
-                <div className="p-4 bg-[#F9FAFB] rounded-lg border border-[#E5E7EB]">
-                  <p className="text-sm text-[#52525B]">This is a demo checkout. In production, this would integrate with Yoco or PayFast for South African payments.</p>
-                </div>
-              </div>
+              <section
+                aria-labelledby="payment-heading"
+                className="rounded-card border border-line bg-white p-6"
+              >
+                <h2 id="payment-heading" className="text-xl font-bold text-ink">
+                  Payment
+                </h2>
+                <p className="mt-3 text-ink-muted">
+                  No payment step exists in this build. Submitting this form
+                  creates a local demo confirmation only.
+                </p>
+              </section>
             </div>
 
             <div className="lg:col-span-1">
-              <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg p-6 sticky top-24">
-                <h2 className="text-xl font-bold text-[#0A0A0A] mb-4">Order Summary</h2>
-                <div className="space-y-3 mb-4">
-                  {state.items.map((item, idx) => (
-                    <div key={idx} className="flex gap-3">
-                      <div className="w-16 h-16 bg-white rounded overflow-hidden flex-shrink-0 border border-[#E5E7EB]">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={item.product.images[0]} alt={item.product.name} className="w-full h-full object-cover" />
+              <div className="sticky top-28 rounded-card border border-line bg-surface p-6">
+                <h2 className="mb-4 text-xl font-bold text-ink">Order summary</h2>
+                <ul className="space-y-3">
+                  {state.items.map((item) => (
+                    <li key={item.product.id} className="flex gap-3">
+                      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded border border-line bg-white">
+                        <Image
+                          src={item.product.images[0]}
+                          alt={item.product.altText?.[0] ?? item.product.name}
+                          fill
+                          sizes="64px"
+                          className="object-cover"
+                        />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-[#0A0A0A] line-clamp-2">{item.product.name}</p>
-                        <p className="text-sm text-[#52525B]">Qty: {item.quantity}</p>
-                        <p className="text-sm font-bold text-[#0A0A0A]">{formatPrice(item.product.price * item.quantity)}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="line-clamp-2 text-sm font-medium text-ink">
+                          {item.product.name}
+                        </p>
+                        <p className="text-sm text-ink-muted">
+                          Qty: {item.quantity}
+                        </p>
+                        <p className="text-sm font-bold text-ink">
+                          {formatPrice(item.product.price * item.quantity)}
+                        </p>
                       </div>
-                    </div>
+                    </li>
                   ))}
-                </div>
-                <div className="border-t border-[#E5E7EB] pt-3 space-y-2 mb-4">
-                  <div className="flex justify-between text-[#0A0A0A]">
-                    <span>Subtotal</span>
-                    <span>{formatPrice(state.subtotal)}</span>
+                </ul>
+
+                <dl className="mt-4 space-y-2 border-t border-line pt-4">
+                  <div className="flex justify-between gap-4 text-ink">
+                    <dt>Subtotal</dt>
+                    <dd>{formatPrice(state.subtotal)}</dd>
                   </div>
-                  <div className="flex justify-between text-[#0A0A0A]">
-                    <span>Shipping</span>
-                    <span>R150.00</span>
+                  <div className="flex justify-between gap-4 text-ink-muted">
+                    <dt>Delivery</dt>
+                    <dd className="text-right text-sm">Not configured</dd>
                   </div>
-                  <div className="border-t border-[#E5E7EB] pt-2 flex justify-between font-bold text-[#0A0A0A] text-lg">
-                    <span>Total</span>
-                    <span>{formatPrice(state.subtotal + 15000)}</span>
+                  <div className="flex justify-between gap-4 text-ink-muted">
+                    <dt>Tax</dt>
+                    <dd className="text-right text-sm">Not configured</dd>
                   </div>
-                </div>
-                <Button 
-                  type="submit" 
+                  <div className="flex justify-between gap-4 border-t border-line pt-2 text-lg font-bold text-ink">
+                    <dt>Total</dt>
+                    <dd>{formatPrice(state.subtotal)}</dd>
+                  </div>
+                </dl>
+
+                <Button
+                  type="submit"
                   disabled={isProcessing}
-                  className="w-full bg-[#A855F7] hover:bg-[#9333EA] text-white h-12"
+                  aria-describedby="checkout-demo-note"
+                  className="mt-5 h-12 w-full rounded-card bg-brand text-white hover:bg-brand-hover"
                 >
-                  {isProcessing ? "Processing..." : "Place Order (Demo)"}
+                  {isProcessing ? "Creating demo order…" : "Place demo order"}
                 </Button>
-                <p className="text-xs text-[#52525B] text-center mt-2">
-                  By placing this order, you agree to our terms and conditions
+
+                <p
+                  id="checkout-demo-note"
+                  className="mt-3 text-center text-xs text-ink-muted"
+                >
+                  No payment will be taken. No stock is reserved.
+                </p>
+
+                <p aria-live="polite" className="sr-only">
+                  {isProcessing ? "Creating your demo order." : ""}
                 </p>
               </div>
             </div>
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+type FieldProps = {
+  id: CheckoutField;
+  label: string;
+  value: string;
+  error?: string;
+  onChange: (
+    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => void;
+  type?: string;
+  autoComplete?: string;
+  inputMode?: "text" | "numeric" | "tel" | "email";
+  placeholder?: string;
+  className?: string;
+};
+
+function Field({
+  id,
+  label,
+  value,
+  error,
+  onChange,
+  type = "text",
+  autoComplete,
+  inputMode,
+  placeholder,
+  className,
+}: FieldProps) {
+  const errorId = `${id}-error`;
+
+  return (
+    <div className={className}>
+      <label htmlFor={id} className="mb-1 block text-sm font-medium text-ink">
+        {label}
+      </label>
+      <input
+        id={id}
+        name={id}
+        type={type}
+        value={value}
+        onChange={onChange}
+        autoComplete={autoComplete}
+        inputMode={inputMode}
+        placeholder={placeholder}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
+        className={cn(inputClass, error && "border-[#b91c1c]")}
+      />
+      {error && (
+        <p id={errorId} className="mt-1 text-sm text-[#b91c1c]">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

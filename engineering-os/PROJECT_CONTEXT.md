@@ -1,6 +1,6 @@
 # PROJECT_CONTEXT.md — Project Identity and Operating Context
 
-Version: 1.0
+Version: 1.1
 Status: Active
 Last updated: 2026-10-25
 
@@ -34,7 +34,9 @@ Fastest authoritative orientation for humans and agents entering the project. It
 | Observability | None beyond Next.js dev/prod logs | — | Deferred |
 | AI/model gateway | None | — | Assistant described as future work, not implemented |
 | Queue/jobs | None | — | — |
-| Search/vector store | None | — | Header search is not wired |
+| Search/vector store | None | — | Search is evaluated in-process over the seeded catalogue |
+| Testing | Vitest 5 + React Testing Library (jsdom); Playwright | current | Unit/component + single-browser E2E, see ADR-005 |
+| CI | GitHub Actions | — | Lint, type-check, tests, build, Chromium E2E; see ADR-011 |
 
 Do not replace an approved stack component without an accepted ADR.
 
@@ -46,7 +48,7 @@ Do not replace an approved stack component without an accepted ADR.
 - Production: none configured
 - Primary domains: none configured
 - Deployment platform: undecided
-- CI/CD entry point: none; manual `npm run build` verification
+- CI/CD entry point: `.github/workflows/ci.yml` (lint → type-check → unit tests → build → Chromium E2E). No deployment job.
 
 Never place credentials or secret values in this file.
 
@@ -91,21 +93,25 @@ No payment, email, analytics, AI or shipping provider is integrated.
 - Order fulfilment, courier integration, returns processing.
 - User accounts, authentication, admin UI.
 - AI shopping assistant (design intent documented, not built).
-- Working header search / faceted filtering.
+- Real inventory synchronisation; stock values are seeded demo data.
 
 ## 9. Current priorities
-1. Keep the storefront rendering correctly and the root dev workflow reliable.
+1. Keep search, catalogue filtering, cart and demo checkout working and covered by tests.
 2. Connect real catalogue data before making any availability or delivery claims.
 3. Add commerce providers (payment, fulfilment) behind explicit ADRs.
 
 ## 10. Repository map
 - Application source: `dash-app/src/`
-  - Routes: `dash-app/src/app/` (`products`, `products/[slug]`, `categories/[slug]`, `cart`, `checkout`, `checkout/success`, info pages)
-  - Components: `dash-app/src/components/` (`layout`, `product`, `home`, `ui`)
+  - Routes: `dash-app/src/app/` (`products`, `products/[slug]`, `search`, `categories/[slug]`, `cart`, `checkout`, `checkout/success`, info pages, `not-found`, `error`)
+  - Components: `dash-app/src/components/` (`layout`, `product`, `catalog`, `search`, `home`, `ui`)
   - State: `dash-app/src/contexts/cart-context.tsx`
+  - Domain logic: `dash-app/src/lib/` (`catalog.ts`, `cart.ts`, `validation.ts`, `format.ts`)
   - Data: `dash-app/src/lib/data/products.ts`
   - Types: `dash-app/src/types/product.ts`
-- Tests: none yet
+- Tests: `dash-app/src/**/*.test.{ts,tsx}` (Vitest) and `dash-app/e2e/*.spec.ts` (Playwright)
+- Test config: `dash-app/vitest.config.mts`, `dash-app/vitest.setup.ts`, `dash-app/playwright.config.ts`
+- Local test launcher: `dash-app/scripts/run-vitest.mjs` (see ADR-010)
+- CI: `.github/workflows/ci.yml`
 - Migrations: none
 - Infrastructure: none
 - Designs: brand rules in `engineering-os/DESIGN_SYSTEM.md`; logo at repo root `Logo.jpg` (served as `dash-app/public/logo.jpg`)
@@ -122,10 +128,13 @@ cd "/Users/user/Developer/Dash#" && npm run dev      # http://localhost:3000
 
 # lint/typecheck
 cd "/Users/user/Developer/Dash#" && npm run lint
-cd "/Users/user/Developer/Dash#/dash-app" && npx tsc --noEmit
+cd "/Users/user/Developer/Dash#" && npm run typecheck
 
-# test
-# (no test suite configured)
+# unit/component tests (use this, not bare `npx vitest`; see ADR-010)
+cd "/Users/user/Developer/Dash#" && npm test
+
+# end-to-end tests (starts a dev server unless PLAYWRIGHT_BASE_URL is set)
+cd "/Users/user/Developer/Dash#" && npm run test:e2e
 
 # build
 cd "/Users/user/Developer/Dash#" && npm run build
@@ -138,11 +147,15 @@ cd "/Users/user/Developer/Dash#" && npm run build
 - **Recurring pitfall:** starting `next dev` from a different working directory (or via `npm --prefix`) creates competing dev-server registrations and stale `.next` directories. Always use the root script. See `HOW_IT_WORKS.md`.
 - **Repository history purge completed (2026-10-25).** `dash-app/node_modules.bak` was removed from every commit and `main` republished as `ac09c1f…` (previously `2716c04…`). `.git` fell from 66 MB to ~0.6 MB and the pack from 65.11 MiB to 487.43 KiB (≈99.3%); the 86.27 MiB `next-swc.darwin-arm64.node` blob and all 13,735 backup blobs are no longer reachable. The current tree is unchanged (`c2b3040…`, 91 files) and lint, type-check, build and route checks pass. Recovery bundle: `.migration-backup/history-audit-20261025-090411/Dash-pre-rewrite.bundle`. See ADR-004.
 - Catalogue is seeded demo data; no availability, delivery or warranty claim is real.
-- No automated tests; verification is currently lint + type-check + production build + manual route/visual checks.
+- No live inventory: stock is a static number per product, so overselling is impossible only because no order is fulfilled.
+- Delivery and tax are deliberately unset in the demo checkout; the total equals the subtotal. Do not add invented fees.
+- `npx vitest` cannot run from the `#` path; use `npm test`. CI is unaffected.
+- Do not re-add `src/app/loading.tsx` without re-testing duplicate DOM ids (ADR-008).
 - Deployment platform, payment provider and fulfilment provider remain undecided.
 
 ## 13. Last verified
 - Date: 2026-10-25
 - Verified by: AI agent (OpenCode)
-- What was checked: `npx tsc --noEmit` exit 0; `npx eslint .` exit 0; `npm run build` exit 0; all routes return expected status codes; homepage visually inspected via headless Chrome; served CSS contains brand tokens and Tailwind utilities.
+- What was checked: `npx eslint .` exit 0; `npx tsc --noEmit` exit 0; `npm test` 12 files / 100 tests passed; `npm run build` exit 0 (29 static/SSG pages); `npx playwright test` 6/6 passed against the production server on port 3100; route smoke test returned 200 for all public routes and 404 for `/products/does-not-exist`; browser console clean on 7 routes; 390 px layout has no horizontal overflow.
 - Post-publication check (2026-10-25): remote `main` = `ac09c1f…`; a fresh fetch from GitHub contains 0 `dash-app/node_modules.bak` objects; working checkout aligned to `origin/main` with `npm run lint`, `npx tsc --noEmit` and `npm run build` all exit 0.
+- Note: the quality-sprint changes are on `feature/storefront-quality-sprint` and were not pushed when this record was written; the CI workflow has not yet executed on GitHub.

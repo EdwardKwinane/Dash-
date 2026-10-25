@@ -6,7 +6,7 @@ import { CartProvider } from "@/contexts/cart-context";
 
 export const metadata: Metadata = {
   title: "Dash# | Premium Electronics Retailer",
-  description: "Dash# - South Africa's premium AI-powered multi-brand electronics retailer. Shop smartphones, laptops, headphones and more.",
+  description: "Dash# - South Africa's multi-brand electronics retailer. Shop smartphones, laptops, headphones and more.",
 };
 
 export default function RootLayout({

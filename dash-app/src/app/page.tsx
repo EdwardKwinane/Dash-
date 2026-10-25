@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/product/product-card";
+import { SearchBar } from "@/components/search/search-bar";
 import { NewsletterSignup } from "@/components/home/newsletter";
 import { categories, products } from "@/lib/data/products";
 
@@ -31,11 +32,15 @@ export default function Home() {
             </h1>
             <p className="mt-6 max-w-xl text-lg text-ink-muted">
               Smartphones, laptops, audio and accessories from the brands that
-              matter — with clear specifications, honest availability and a
-              shopping assistant that only recommends what is actually in
-              catalogue.
+              matter — with clear specifications, honest availability and
+              search and filters that work on the real catalogue.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+
+            <div className="mt-6 max-w-lg">
+              <SearchBar size="lg" />
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <Button
                 asChild
                 className="h-auto rounded-card bg-brand px-6 py-3 text-white hover:bg-brand-hover"
@@ -77,8 +82,10 @@ export default function Home() {
                 <dd className="mt-1 text-2xl font-bold text-ink">ZAR</dd>
               </div>
               <div>
-                <dt className="text-sm text-ink-muted">Pricing model</dt>
-                <dd className="mt-1 text-2xl font-bold text-ink">Incl. VAT</dd>
+                <dt className="text-sm text-ink-muted">Tax</dt>
+                <dd className="mt-1 text-2xl font-bold text-ink">
+                  Not configured
+                </dd>
               </div>
             </dl>
             <p className="mt-6 border-t border-line pt-4 text-sm text-ink-muted">
@@ -193,10 +200,12 @@ export default function Home() {
             </p>
           </div>
           <div>
-            <h3 className="font-semibold text-ink">Grounded recommendations</h3>
+            <h3 className="font-semibold text-ink">
+              Planned: catalogue assistant
+            </h3>
             <p className="mt-2 text-sm text-ink-muted">
-              The assistant is designed to answer only from catalogue records,
-              with links back to the product page.
+              A catalogue-grounded shopping assistant is planned, not built. No
+              assistant answers are shown in this version.
             </p>
           </div>
         </div>

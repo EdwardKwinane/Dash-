@@ -17,6 +17,13 @@ PROPOSED / ACCEPTED / SUPERSEDED / DEPRECATED / REJECTED
 | ADR-002 | Start the single dev server from the repo root script | ACCEPTED | 2026-10-25 | — |
 | ADR-003 | Publish to GitHub as `origin/main` without rewriting existing history | ACCEPTED | 2026-10-25 | — |
 | ADR-004 | Purge `dash-app/node_modules.bak` from history and republish `main` | ACCEPTED | 2026-10-25 | — |
+| ADR-005 | Adopt Vitest + React Testing Library + Playwright as the test stack | ACCEPTED | 2026-10-25 | — |
+| ADR-006 | Use URL query parameters as the source of truth for catalogue queries | ACCEPTED | 2026-10-25 | — |
+| ADR-007 | Persist the cart from the dispatch and derive hydration from `useSyncExternalStore` | ACCEPTED | 2026-10-25 | — |
+| ADR-008 | Do not use a root `loading.tsx` with this Next.js version | ACCEPTED | 2026-10-25 | — |
+| ADR-009 | Allow `127.0.0.1` as a development origin | ACCEPTED | 2026-10-25 | — |
+| ADR-010 | Run local Vitest through a shadow-copy launcher for the `#` path | ACCEPTED | 2026-10-25 | — |
+| ADR-011 | Gate changes on a GitHub Actions quality + E2E pipeline | ACCEPTED | 2026-10-25 | — |
 
 ## 4. ADR template
 ### ADR-XXX: Decision title
@@ -279,6 +286,304 @@ git push --force-with-lease=main:2716c047894249eab0e1973dff00277e5cc43e20 \
 
 #### References
 `CHANGELOG.md` (2026-10-25 history audit and cleanup rehearsal); ADR-003; `PROJECT_CONTEXT.md` §12; `GIT_WORKFLOW.md` §7.
+
+---
+
+### ADR-005: Adopt Vitest + React Testing Library + Playwright as the test stack
+Date: 2026-10-25
+Status: ACCEPTED
+Decision owner: Project owner
+
+#### Context
+The storefront had no automated tests. Search, filtering, cart arithmetic and checkout validation are now non-trivial domain logic, and the project needs a repeatable gate that runs locally and in CI without adding a second framework or a browser download for unit tests.
+
+#### Decision drivers
+- Fast feedback for pure logic and React components.
+- Compatibility with Next.js 16 / React 19 and TypeScript path aliases (`@/…`).
+- One E2E tool that can drive the real critical journey.
+- Minimal configuration and no vendor lock-in.
+
+#### Options considered
+1. **Jest + RTL + Playwright** — mature, but Jest needs extra ESM/Next transforms and duplicates configuration already handled by Vite.
+2. **Vitest + RTL (jsdom) + Playwright** — accepted: Vitest reuses the Vite transform pipeline, understands `tsconfig` paths via `vite-tsconfig-paths`, and keeps unit tests browser-free; Playwright covers the real journey.
+3. **Playwright only** — rejected: too slow and too coarse for reducer/validation edge cases.
+
+#### Decision
+Use Vitest 5 (`environment: "jsdom"`, `@vitejs/plugin-react`, `resolve.tsconfigPaths`) with React Testing Library, `@testing-library/user-event` and `jest-dom` for unit/component/integration tests under `src/**/*.test.{ts,tsx}`. Use Playwright for E2E under `dash-app/e2e/`, with installed Google Chrome locally (`channel: "chrome"`) and Playwright Chromium in CI.
+
+#### Rationale
+Vitest exercises the same module graph the app uses, so path aliases and TS work without extra transforms; Playwright verifies the behaviour that only a browser can prove (streaming, hydration, navigation, localStorage).
+
+#### Consequences
+Positive: 100 deterministic unit/component tests in ~5 s; E2E covers the revenue-critical journey.
+Negative: two test runners and two config files to maintain; jsdom is not a real browser, so layout/streaming behaviour still needs E2E or manual checks.
+New obligations: new business rules need a unit test; new routes in the critical journey need an E2E test.
+
+#### Security/privacy impact
+None. Tests use seeded catalogue data and never contact a network service.
+
+#### Cost impact
+None locally; GitHub Actions minutes for the E2E job.
+
+#### Migration and rollback
+Removing Playwright leaves Vitest intact; replacing Vitest with Jest is a config change plus import updates. No production code depends on either runner.
+
+#### Validation
+`npm test` → 12 files / 100 tests passed; `npx playwright test` → 6 passed; both are wired into CI.
+
+#### References
+`TESTING_STRATEGY.md`; `CHANGELOG.md` (2026-10-25 quality sprint); ADR-011.
+
+---
+
+### ADR-006: Use URL query parameters as the source of truth for catalogue queries
+Date: 2026-10-25
+Status: ACCEPTED
+Decision owner: Project owner
+
+#### Context
+Search, filters and sorting must survive reloads, be shareable, work with the back button and remain usable without client JavaScript. The catalogue is a small, build-time module, so filtering on the server is cheap.
+
+#### Decision drivers
+- Shareable, bookmarkable results.
+- No duplicated client/server filter logic.
+- No full page reloads when changing a control.
+- Predictable behaviour for hand-edited or stale URLs.
+
+#### Options considered
+1. **Client-only state (`useState`) and filtering in the browser** — rejected: state is lost on reload/share, and the initial HTML would not reflect the query.
+2. **Server components reading `searchParams`, controls navigating with `router.push`** — accepted: one implementation, correct first paint, no reload.
+3. **Hybrid (URL + client cache)** — rejected as unnecessary complexity for six products.
+
+#### Decision
+`src/lib/catalog.ts` parses and validates raw `searchParams` into a `CatalogQuery`; `/search` and `/products` are server components that evaluate it over the in-repo catalogue. Controls are links/forms that navigate to a new URL (`router.push` for the text input, checkbox/select changes build a query string). Unknown `sort`, `price`, `category` or `brand` values are ignored rather than throwing.
+
+#### Rationale
+The URL is already the browser's state container, so there is one representation to test and no hydration-dependent filtering.
+
+#### Consequences
+Positive: results are correct on first paint, shareable and testable; empty states and counts are derived from the same query.
+Negative: each filter change is a server round-trip (acceptable at this catalogue size); very large catalogues would need pagination and possibly a search index.
+New obligations: any new filter must be added to `parseCatalogQuery`, the URL builder and the tests together.
+
+#### Security/privacy impact
+Search terms appear in the URL and therefore in server/browser history. No personal data should be put in catalogue query parameters.
+
+#### Cost impact
+None at current scale.
+
+#### Migration and rollback
+Filters can later move behind an API or search provider without changing the URL contract.
+
+#### Validation
+Unit tests cover parsing, normalisation, filtering, sorting and URL building; E2E asserts `?category=laptops-computers` changes the result count.
+
+#### References
+`src/lib/catalog.ts`; `CHANGELOG.md` (2026-10-25 search and discovery).
+
+---
+
+### ADR-007: Persist the cart from the dispatch and derive hydration from `useSyncExternalStore`
+Date: 2026-10-25
+Status: ACCEPTED
+Decision owner: Project owner
+
+#### Context
+The cart is restored from `localStorage` after mount. A persistence effect that runs on the first render sees the empty server-rendered cart and can overwrite the returning shopper's saved cart (and runs twice under StrictMode). A `setState`-in-effect hydration flag also triggers cascading renders and is rejected by the project's React lint rules.
+
+#### Decision drivers
+- Never lose a saved cart.
+- No hydration mismatch between server HTML and the first client render.
+- No `setState` synchronously inside an effect.
+- Correct behaviour under rapid clicks.
+
+#### Options considered
+1. **`useEffect` persistence + `setState` hydration flag** — rejected: overwrite race, double write under StrictMode, lint failure.
+2. **Lazy `useReducer` initialiser reading `localStorage`** — rejected: runs during render, so server and client would disagree (hydration mismatch).
+3. **Restore once in an effect; persist inside the `dispatch` wrapper; hydration flag via `useSyncExternalStore`** — accepted.
+
+#### Decision
+`CartProvider` restores once (`hasRestored` ref), applies mutations through a wrapper that computes the next state synchronously, dispatches it and writes the serialised cart to `localStorage` in the same call. Rejected actions are never persisted. `isHydrated` uses `useSyncExternalStore` with a server snapshot of `false` and a client snapshot of `true`.
+
+#### Rationale
+Persistence is a side effect of an accepted mutation, not of rendering, which removes the race and the extra effect entirely. `useSyncExternalStore` is the React-blessed way to express "client-only value" without an effect.
+
+#### Consequences
+Positive: saved carts survive reloads; no write on first paint; no cascading render; tests assert storage is untouched on mount.
+Negative: `localStorage` writes happen in the event handler, so a thrown quota error must be swallowed (it is); the cart is per-browser, not per-account.
+New obligations: any new cart mutation must go through the wrapper.
+
+#### Security/privacy impact
+Cart contents stay in the shopper's browser. `parseStoredCart` treats storage as untrusted input and drops unknown products, malformed JSON and non-positive quantities.
+
+#### Cost impact
+None.
+
+#### Migration and rollback
+Replacing browser storage with server-side carts requires an auth model and an API; the reducer and validation can be reused.
+
+#### Validation
+`src/contexts/cart-context.test.tsx` verifies restore-without-overwrite and that rejected over-orders are not persisted; E2E completes a full cart journey.
+
+#### References
+`src/lib/cart.ts`; `src/contexts/cart-context.tsx`; ADR-005.
+
+---
+
+### ADR-008: Do not use a root `loading.tsx` with this Next.js version
+Date: 2026-10-25
+Status: ACCEPTED
+Decision owner: Project owner
+
+#### Context
+With Next.js 16.4.3, the root `src/app/loading.tsx` caused a streamed fallback to remain in the DOM as `<div hidden id="S:0">` in roughly 40% of production page loads. The hidden node contained a second copy of the page, duplicating text and element ids (for example the empty-state paragraph matched twice). Because it is `hidden`, it is invisible to users but breaks strict locators, id uniqueness and assistive-technology expectations.
+
+#### Decision drivers
+- One DOM node per element id.
+- Predictable Playwright locators.
+- No flash of duplicated content.
+
+#### Options considered
+1. **Keep `loading.tsx` and make tests tolerant** — rejected: hides a real DOM defect and leaves duplicate ids in production.
+2. **Remove the root `loading.tsx`** — accepted: routes render without a streamed fallback shell; navigation remains fast at this catalogue size.
+3. **Move the boundary to a narrower segment** — possible later, but would need the same duplicate-node test before adoption.
+
+#### Decision
+There is no root `loading.tsx`. Loading states are rendered inside the components that actually wait (cart/checkout use `isHydrated` and a `role="status"` message).
+
+#### Rationale
+The fallback bought little perceived speed at this size and produced invalid DOM. Removing it made 10/10 loads clean.
+
+#### Consequences
+Positive: no duplicate ids or duplicated text; E2E locators are unambiguous.
+Negative: no route-level streaming skeleton; a slower future route may want a scoped `loading.tsx`.
+New obligations: re-test duplicate ids and strict locators before adding any `loading.tsx` back.
+
+#### Validation
+After removal, a 10-run Playwright check found one empty-state paragraph per load (previously 2 in 4/10 runs), and full-suite E2E passed three consecutive times.
+
+#### References
+`CHANGELOG.md` (2026-10-25); `src/app/` (no `loading.tsx`).
+
+---
+
+### ADR-009: Allow `127.0.0.1` as a development origin
+Date: 2026-10-25
+Status: ACCEPTED
+Decision owner: Project owner
+
+#### Context
+Next.js 16 blocks cross-origin requests to dev-only resources by default and trusts only the hostname the dev server started on. The dev server starts as `localhost`, but Playwright and `curl` use `127.0.0.1`; their requests for dev assets were blocked, so React never hydrated and interactive checks silently failed.
+
+#### Decision drivers
+- Deterministic local and E2E behaviour.
+- No weakening of production behaviour.
+- Minimal configuration.
+
+#### Options considered
+1. **Always use `localhost` in tooling** — rejected: fragile (some environments resolve differently) and does not fix `curl`/third-party tools.
+2. **`allowedDevOrigins: ["127.0.0.1"]`** — accepted: scoped to development, explicit host.
+3. **Disable the cross-origin check** — not available and unsafe.
+
+#### Decision
+`dash-app/next.config.ts` sets `allowedDevOrigins: ["127.0.0.1"]`. The production build ignores it.
+
+#### Consequences
+Positive: dev assets load from both hostnames; hydration works under Playwright and `curl`.
+Negative: one more dev-only setting to remember when the hostname changes.
+New obligations: add any new dev hostname (for example a tunnel) explicitly.
+
+#### Security/privacy impact
+Development only; no production origin is trusted by this setting.
+
+#### Validation
+Before: `GET /checkout` from `127.0.0.1` stayed on "Loading your cart…" and logged blocked HMR requests. After: the page hydrates, the mobile menu and search work, and E2E passes.
+
+#### References
+`dash-app/next.config.ts`; `CHANGELOG.md` (2026-10-25).
+
+---
+
+### ADR-010: Run local Vitest through a shadow-copy launcher for the `#` path
+Date: 2026-10-25
+Status: ACCEPTED
+Decision owner: Project owner
+
+#### Context
+The mandated project path `/Users/user/Developer/Dash#` contains `#`. Vite treats that character as a URL fragment, so module ids are truncated and Vitest fails before running any test. The same class of problem already forced Tailwind v3 (ADR-001).
+
+#### Decision drivers
+- Keep the mandated path.
+- Keep `npm test` working locally without per-developer instructions.
+- Do not change test semantics between local and CI.
+
+#### Options considered
+1. **Rename the folder** — forbidden.
+2. **Encode or symlink the path** — fragile and affects every tool, not just Vitest.
+3. **Copy the project to a temporary directory and hard-link `node_modules`** — accepted: cheap, isolated, and only used when the path contains `#`.
+
+#### Decision
+`dash-app/scripts/run-vitest.mjs` is the `npm test` entry point. If the project path contains `#`, it copies the project (excluding build/test artefacts) to `$TMPDIR/dash-sharp-vitest`, hard-links `node_modules` with `cp -al`, and runs Vitest there. Otherwise it runs Vitest in place. CI checks out to a plain path, so it takes the direct branch.
+
+#### Consequences
+Positive: one command works everywhere; no test-only code changes.
+Negative: local runs copy the tree (a few hundred ms) and the temporary directory is rebuilt each run.
+New obligations: if the project moves to a path without `#`, the launcher becomes a no-op automatically.
+
+#### Validation
+`npm test` → 12 files / 100 tests passed from the `#` path; CI uses the same script and the direct branch.
+
+#### References
+`dash-app/scripts/run-vitest.mjs`; ADR-001.
+
+---
+
+### ADR-011: Gate changes on a GitHub Actions quality + E2E pipeline
+Date: 2026-10-25
+Status: ACCEPTED
+Decision owner: Project owner
+
+#### Context
+Verification was manual (lint, type-check, build, route checks). The new domain logic and browser behaviour need a repeatable gate that runs on every push and pull request.
+
+#### Decision drivers
+- Catch regressions before merge.
+- Match the versions used locally (Node 24, Next 16).
+- Keep runtime and cost modest.
+- Avoid flaky blocking checks.
+
+#### Options considered
+1. **No CI** — rejected: verification depends on whoever remembers to run it.
+2. **Quality job only** — cheap, but would not catch hydration/streaming/navigation regressions.
+3. **Quality job + Chromium E2E job** — accepted: unit/build gate first, then a single-browser E2E job that reuses the production build.
+
+#### Decision
+`.github/workflows/ci.yml` runs on pushes and pull requests to `main`:
+- `quality`: Node 24, `npm ci`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` (working directory `dash-app`).
+- `e2e`: depends on `quality`; installs Playwright Chromium, runs `npx playwright test` with `CI=true` (the config builds and starts the production server, one worker, one retry), and uploads the HTML report on failure.
+
+#### Rationale
+The quality job is fast and deterministic; the E2E job proves the browser-only behaviour without multiplying browsers or shards.
+
+#### Consequences
+Positive: every change is checked the same way; failures leave a downloadable report.
+Negative: E2E adds several minutes and depends on GitHub-hosted runner capacity; Chromium is the only browser covered.
+New obligations: keep `package-lock.json` committed and in sync; update the workflow when the Node or Playwright version changes.
+
+#### Security/privacy impact
+`permissions: contents: read` only. No secrets are used; the workflow does not deploy.
+
+#### Cost impact
+GitHub Actions minutes on the repository's plan.
+
+#### Migration and rollback
+The workflow is a single file and can be disabled or replaced without touching application code.
+
+#### Validation
+Workflow YAML parses with two jobs; every command it runs has been executed locally with the same results (see `CHANGELOG.md`). The workflow itself has not yet run on GitHub because the branch has not been pushed.
+
+#### References
+`CHANGELOG.md` (2026-10-25); `TESTING_STRATEGY.md`; ADR-005.
 
 ---
 
