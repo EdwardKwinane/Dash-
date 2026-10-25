@@ -19,7 +19,12 @@ export const products: Product[] = [
     category: "Smartphones",
     price: 2999900, // R29,999.00
     compareAtPrice: 3299900,
-    images: ["https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=800"],
+    // Verified CC BY 4.0 photo (see public/products/CREDITS.md). Shows the
+    // actual S25 Ultra: model-code sticker SM-S938B/DS and the retail placard.
+    images: ["/products/samsung-galaxy-s25-ultra.jpg"],
+    altText: [
+      "Samsung Galaxy S25 Ultra rear view in Titanium Silverblue, held in a retail display",
+    ],
     description: "The most powerful Galaxy ever with advanced AI features, stunning display, and pro-grade camera system.",
     keySellingPoints: ["200MP Camera", "Snapdragon 8 Elite", "6.8\" Dynamic AMOLED 2X", "5000mAh Battery"],
     specifications: {
@@ -150,7 +155,12 @@ export const products: Product[] = [
     brand: "Logitech",
     category: "Accessories",
     price: 149900,
-    images: ["https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=800"],
+    // Verified CC BY 4.0 photo (see public/products/CREDITS.md) showing the
+    // MX Master's sculpted right-handed ergonomic body.
+    images: ["/products/logitech-mx-master-3s.jpg"],
+    altText: [
+      "Logitech MX Master 3S wireless mouse, sculpted right-handed body on a neutral background",
+    ],
     description: "An iconic mouse remastered for ultimate comfort and performance.",
     keySellingPoints: ["8K DPI", "Quiet Clicks", "USB-C Charging", "Multi-device"],
     specifications: {

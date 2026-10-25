@@ -1,14 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { categories, getProductsInCategory, products } from "@/lib/data/products";
+import { existsSync } from "node:fs";
+import path from "node:path";
+import {
+  categories,
+  getProductsInCategory,
+  products,
+} from "@/lib/data/products";
 
 /**
  * Catalogue consistency guardrails: every presentation surface (homepage,
  * category and search listings, product pages, cart, checkout) renders from
  * this seeded data, so structural mistakes here would surface as contradictions
  * between surfaces. These tests enforce the invariants the UI relies on.
+ *
+ * Images may be either remote demo imagery on the approved Unsplash host or
+ * local license-verified assets under public/products (provenance records in
+ * public/products/CREDITS.md).
  */
 
 const APPROVED_IMAGE_HOST = "images.unsplash.com";
+const APP_ROOT = path.resolve(__dirname, "../../..");
+const PUBLIC_DIR = path.join(APP_ROOT, "public");
 
 describe("category data", () => {
   it("has unique ids, names and slugs with route-safe slugs", () => {
@@ -93,13 +105,46 @@ describe("product data", () => {
     expect(getProductsInCategory("Nonexistent category")).toEqual([]);
   });
 
-  it("serves images from the approved demo image host over https", () => {
+  it("serves images from approved sources (Unsplash host or local products dir)", () => {
     for (const product of products) {
       expect(product.images.length).toBeGreaterThan(0);
       for (const image of product.images) {
-        expect(image.startsWith("https://")).toBe(true);
-        expect(new URL(image).hostname).toBe(APPROVED_IMAGE_HOST);
+        if (image.startsWith("/")) {
+          // Local asset: must live in public/, be safe, and actually exist.
+          expect(image.startsWith("/products/")).toBe(true);
+          expect(image.includes("..")).toBe(false);
+          expect(
+            existsSync(path.join(PUBLIC_DIR, decodeURIComponent(image))),
+          ).toBe(true);
+        } else {
+          expect(image.startsWith("https://")).toBe(true);
+          expect(new URL(image).hostname).toBe(APPROVED_IMAGE_HOST);
+        }
       }
+    }
+  });
+
+  it("labels replacement local assets with the product slug they belong to", () => {
+    for (const product of products) {
+      for (const image of product.images) {
+        if (image.startsWith("/products/")) {
+          expect(image).toContain(product.slug);
+        }
+      }
+    }
+  });
+
+  it("alt text, when seeded, is a complete non-empty description", () => {
+    for (const product of products) {
+      if (product.altText !== undefined) {
+        expect(product.altText.length).toBeGreaterThan(0);
+        for (const text of product.altText) {
+          expect(text.trim()).not.toBe("");
+        }
+      }
+      // Meaningful product images always render with a usable alt: at least
+      // the shared fallback (the product name) or a seeded description.
+      expect(product.altText?.[0] ?? product.name).not.toBe("");
     }
   });
 

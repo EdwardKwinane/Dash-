@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## Verified product image resolution (2026-10-25)
+
+Branch: `feature/storefront-quality-sprint`, stacked on the catalogue-consistency sprint. Not pushed.
+
+### What changed
+- **Replaced two of the three confirmed image mismatches with verified exact-model assets**, both **CC BY 4.0** from Wikimedia Commons, verified visually at full resolution before use:
+  - `samsung-galaxy-s25-ultra.jpg`: the in-frame demo-sticker reads **SM-S938B/DS 256GB** (the official S25 Ultra model code), the retail placard reads "Galaxy S25 Ultra", S Pen pad and 2025 signage visible; author Jakub CA; original 3317×2488.
+  - `logitech-mx-master-3s.jpg`: unmistakable sculpted MX Master body with "logi" branding, thumb-rest scallop and dual thumb buttons; author Hayden Schiff (`IagoQnsi`), deliberate 3S photo series, October 2025 EXIF date.
+  - Both were downscaled to 1600 px and had EXIF/XMP/IPTC segments stripped (no capture-hardware/personal metadata ships in the repo); `products.ts` points the two records at the local files and seeds precise `altText` describing the verified content.
+- **Dell XPS 13 Plus remains unresolved by evidence**: Wikimedia Commons has zero photos of the 9320 ("XPS 13 Plus" / "XPS 9320" searches → 0 hits; the existing "Dell XPS 13 9350" file is the later model line), and manufacturer/retailer imagery carries no redistribution license. The current mismatched asset is kept, per policy, and recorded.
+- Added the provenance/licensing record `dash-app/public/products/CREDITS.md`: per-file source page, author, license, modifications, attribution obligation lines, residual uncertainty, and the documented status of all four remaining Unsplash-hosted images.
+- **Extended the catalogue guardrails** (`src/lib/data/products.test.ts`): local `/products/...` images must exist in `public/`, be traversal-safe, and their filename must include the product slug; Unsplash-hosted images must remain on the approved https host; seeded `altText` must be non-empty; the in-repo asset edge is now enforced, not just asserted.
+- Config unchanged: `images.remotePatterns` still lists only Unsplash — local asset paths require no allowlist. **ADR-013** records the local-hosting decision.
+
+### Files
+- Created: `dash-app/public/products/samsung-galaxy-s25-ultra.jpg`, `dash-app/public/products/logitech-mx-master-3s.jpg`, `dash-app/public/products/CREDITS.md`.
+- Changed: `dash-app/src/lib/data/products.ts` (2 image records + altText), `dash-app/src/lib/data/products.test.ts` (extended guardrails), `engineering-os/DECISIONS.md` (ADR-013), `engineering-os/PROJECT_CONTEXT.md` (integration table).
+
+### Verified
+- `npm run lint` → exit 0; `npx tsc --noEmit` → exit 0; `npm test` → **14 files / 123 tests passed**; `npm run build` → success; `npx playwright test` → **15 passed** (recorded after the change; see table below for the actual run).
+- Visual inspection of the replaced products' surfaces (homepage hero + category cards, product detail, cart, checkout) at 1440/768/390 px: local images render correctly through `next/image` (object-cover crops are sensible for the new aspect ratios), no overflow, no console errors.
+
 ## Product presentation consistency & catalogue trust sprint (2026-10-25)
 
 Branch: `feature/storefront-quality-sprint`, stacked on the homepage polish sprint. Not pushed.

@@ -25,6 +25,7 @@ PROPOSED / ACCEPTED / SUPERSEDED / DEPRECATED / REJECTED
 | ADR-010 | Run local Vitest through a shadow-copy launcher for the `#` path | ACCEPTED | 2026-10-25 | — |
 | ADR-011 | Gate changes on a GitHub Actions quality + E2E pipeline | ACCEPTED | 2026-10-25 | — |
 | ADR-012 | Replace the two-tier header with a disclosure mega-menu navbar | ACCEPTED | 2026-10-25 | — |
+| ADR-013 | Host verified product imagery locally in `public/products` with recorded provenance | ACCEPTED | 2026-10-25 | — |
 
 ## 4. ADR template
 ### ADR-XXX: Decision title
@@ -630,6 +631,49 @@ The old header was deleted in the same commit; restoring it is a file restore pl
 
 #### References
 `CHANGELOG.md` (2026-10-25 navigation rebuild); `src/components/ui/navbar2.tsx`; `src/components/search/search-bar.tsx`.
+
+### ADR-013: Host verified product imagery locally in `public/products` with recorded provenance
+Date: 2026-10-25
+Status: ACCEPTED
+Decision owner: Project owner
+
+#### Context
+The seeded catalogue used Unsplash-hosted demo imagery for all products. A Sprint 04 audit confirmed three demonstrable image/product mismatches (a Galaxy S21 5G photo on the S25 Ultra record, an Apple MacBook photo on the Dell XPS 13 Plus record, and a compact travel-mouse photo on the MX Master 3S record). A replacement attempt failed for all three on Unsplash (auth-walled, unattributable per-photo provenance), while Wikimedia Commons supplied two exact-model, clearly licensed photos (CC BY 4.0) for the Samsung and Logitech records.
+
+#### Decision drivers
+- The storefront's core trust claim is "honest seeded data"; showing an S21 box under an S25 Ultra name directly undermines it.
+- Any replacement must verify *exact-model identity* and a *documented license*; no third condition was acceptable.
+- Unsplash per-photo authorship could not be established (host blocks API/scraping), so Unsplash cannot host *corrected* imagery even though its license permits use.
+- A public-repository portfolio must be able to legally redistribute the asset it ships.
+
+#### Options considered
+1. Keep the mismatched Unsplash images — rejected for the two confirmed mismatches where a verified replacement exists; kept for the rest (no verified candidates anywhere).
+2. Manufacturer/retailer press images (Samsung/Dell/Logitech pages) — rejected: display on a product page is not a redistribution license; downloading for repo distribution would be unlicensed copying.
+3. Local, license-verified Commons assets + `CREDITS.md` provenance record — accepted, for both corrected products.
+4. New remote image host for corrected assets — rejected: it would add `remotePatterns` surface for no benefit over local files that are already optimised by `next/image`.
+
+#### Decision
+Corrected images are stored in the repository at `dash-app/public/products/` (downscaled ≤1600 px, metadata-stripped), referenced from `products.ts` by local path, and accompanied by `public/products/CREDITS.md` recording source page, author, license (+ obligations and attribution lines), modifications, and residual uncertainty. Guardrail tests assert every local catalogue image exists in that folder and that its filename includes the product slug. Unsplash remains approved for uncorrected demo imagery pending owner-provided assets. `images.remotePatterns` is unchanged (local paths need no allowlist).
+
+#### Consequences
+Positive: legally redistributable, exactly-verified imagery for the two worst mismatches; provenance becomes auditable; repo ships what it renders.
+Negative: the repo carries image bytes (~370 KB); corrected photos are user-taken (in-store / desk shots) rather than studio press renders.
+New obligations: (1) CC BY 4.0 attribution lines apply if the site is published publicly while these images are used — recorded in `CREDITS.md`; (2) any future image added to `public/products/` must get a CREDITS row and pass the guardrail tests; (3) the Dell XPS 13 Plus mismatch remains open pending an owner-provided, verifiably licensed asset.
+
+#### Security/privacy impact
+EXIF/XMP/IPTC metadata (including capture hardware and shooting parameters) was stripped from committed assets; no personal data or GPS coordinates ship in the repo.
+
+#### Cost impact
+None (no new services; Next.js local image optimisation unchanged).
+
+#### Migration and rollback
+`git revert` of the data commit restores the previous Unsplash URLs; the assets and CREDITS record are additive and harmless if unused.
+
+#### Validation
+`npm test` (123 tests, including the extended image-source guardrails); `npx playwright test` (15 passed); visual inspection of the homepage (hero + category cards), product detail, cart and checkout surfaces showing the replaced products at 1440/768/390 px with no layout or console regressions.
+
+#### References
+`public/products/CREDITS.md`; `CHANGELOG.md` (2026-10-25 image-resolution sprint); `src/lib/data/products.ts`; `dash-app/next.config.ts`.
 
 ---
 

@@ -55,7 +55,8 @@ Never place credentials or secret values in this file.
 ## 5. External integrations
 | Provider/System | Purpose | Source of truth? | Criticality | Owner |
 |---|---|---|---|---|
-| Remote image host (product images in `src/lib/data/products.ts`) | Demo product imagery | No | Low | Project owner |
+| Remote image host (Unsplash; remaining demo images in `src/lib/data/products.ts`) | Demo product imagery for products without verified assets | No | Low | Project owner |
+| Local image assets (`dash-app/public/products/`) + `public/products/CREDITS.md` | License-verified, exact-model corrected product imagery (CC BY 4.0, provenance recorded) | Provenance record is authoritative for those files | Low | Project owner |
 
 No payment, email, analytics, AI or shipping provider is integrated.
 
