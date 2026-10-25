@@ -24,7 +24,7 @@ Fastest authoritative orientation for humans and agents entering the project. It
 | Language | TypeScript | ^5 | `strict: true` |
 | Styling | Tailwind CSS + PostCSS + Autoprefixer | 3.4.19 / ^8 / ^10 | **v3 deliberately, see ADR-001** |
 | UI primitives | Radix Slot, CVA, clsx, tailwind-merge, lucide-react | current | `Button` + icons |
-| Backend/runtime | Next.js server runtime (static + dynamic routes) | 16.4.3 | No separate API service |
+| Backend/runtime | Medusa v2 (Node >=22.23.4) in `apps/backend/`; frontend stays `dash-app/` | 2.22.0 / separate app | Separate backend; `npm run dev` in `apps/backend/` → http://localhost:9000; database `medusa-dash-backend` (PostgreSQL) |
 | Database | None | — | Catalogue is a typed in-repo module |
 | Auth | None | — | No accounts |
 | Storage | Browser `localStorage` | — | Cart persistence only |

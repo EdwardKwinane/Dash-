@@ -26,6 +26,7 @@ PROPOSED / ACCEPTED / SUPERSEDED / DEPRECATED / REJECTED
 | ADR-011 | Gate changes on a GitHub Actions quality + E2E pipeline | ACCEPTED | 2026-10-25 | — |
 | ADR-012 | Replace the two-tier header with a disclosure mega-menu navbar | ACCEPTED | 2026-10-25 | — |
 | ADR-013 | Host verified product imagery locally in `public/products` with recorded provenance | ACCEPTED | 2026-10-25 | — |
+| ADR-014 | Add Medusa v2 backend at `apps/backend/` as separate sibling (not workspace) | ACCEPTED | 2026-10-25 | — |
 
 ## 4. ADR template
 ### ADR-XXX: Decision title
@@ -672,9 +673,48 @@ None (no new services; Next.js local image optimisation unchanged).
 #### Validation
 `npm test` (123 tests, including the extended image-source guardrails); `npx playwright test` (15 passed); visual inspection of the homepage (hero + category cards), product detail, cart and checkout surfaces showing the replaced products at 1440/768/390 px with no layout or console regressions.
 
-#### References
-`public/products/CREDITS.md`; `CHANGELOG.md` (2026-10-25 image-resolution sprint); `src/lib/data/products.ts`; `dash-app/next.config.ts`.
+### ADR-014: Add Medusa v2 backend at `apps/backend/` as separate sibling (not workspace)
+Date: 2026-10-25
+Status: ACCEPTED
+Decision owner: Project owner
 
+#### Context
+The project requires a Medusa v2 commerce backend to replace the seeded frontend catalogue data. The existing repository structure uses `dash-app/` as a standalone Next.js app with plain npm scripts at the root (no workspaces). Converting to a workspace monorepo would introduce complexity and potential conflicts with the existing Tailwind v3 path-workaround (ADR-001) and require modifying the root `package.json` workflow.
+
+#### Decision drivers
+- Preserve existing `dash-app/` storefront untouched
+- Minimize structural changes to the repository
+- Maintain plain npm scripts convention at root
+- Keep backend development independent (can be added to CI later)
+- No Docker available; PostgreSQL runs locally via Homebrew
+
+#### Options considered
+1. **Convert to npm workspaces** — rejected: would require rewriting root scripts, merging `dash-app/package.json` into a workspaces structure, and complicating the Tailwind `#` path workaround.
+2. **Move storefront into `apps/storefront`** — rejected: would touch existing working code, lose individual service control, and require rewrites of lint/type-check/test scripts.
+3. **Create `apps/backend/` as standalone package** — accepted: keeps `dash-app/` unchanged; backend has its own `package.json`, runs from `apps/backend/`, and root scripts delegate via `cd`.
+
+#### Decision
+Created `apps/backend/` containing the full Medusa v2 backend (package.json, medusa-config.ts, src/, etc.). The backend runs independently from `apps/backend/` via `npm run dev` (starts on port 9000). No repository root `package.json` changes; the backend is a sibling to `dash-app`, not a workspace member.
+
+#### Consequences
+Positive: zero impact on the existing storefront; backend can be tested/modified independently; future workspace conversion remains possible but not required.
+Negative: running both requires starting each from its directory; cross-package linting not available (accept it).
+New obligations: CI may need a separate job for `apps/backend`; if workspace migration desired later, document the migration.
+
+#### Security/privacy impact
+No secrets committed; `.env` contains DATABASE_URL (local PostgreSQL), CORS, and localhost secrets only. Added `.env` and `.env.template` to root `.gitignore`.
+
+#### Cost impact
+None (local PostgreSQL already running; no managed services).
+
+#### Migration and rollback
+Deleting `apps/backend/` removes the backend entirely. No rollback path applies.
+
+#### Validation
+`cd apps/backend && npm run build` exits 0; `npm run dev` starts on port 9000 with health `/health` returning 200 OK; PostgreSQL connection successful via DATABASE_URL.
+
+#### References
+`apps/backend/package.json`, `apps/backend/medusa-config.ts`, `apps/backend/.env`, `apps/backend/.env.template`.
 ---
 
 ## 5. ADR lifecycle
