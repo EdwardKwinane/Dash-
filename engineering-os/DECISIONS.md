@@ -15,6 +15,7 @@ PROPOSED / ACCEPTED / SUPERSEDED / DEPRECATED / REJECTED
 |---|---|---|---|---|
 | ADR-001 | Use Tailwind CSS v3 instead of v4 for this repository | ACCEPTED | 2026-10-25 | — |
 | ADR-002 | Start the single dev server from the repo root script | ACCEPTED | 2026-10-25 | — |
+| ADR-003 | Publish to GitHub as `origin/main` without rewriting existing history | ACCEPTED | 2026-10-25 | — |
 
 ## 4. ADR template
 ### ADR-XXX: Decision title
@@ -148,6 +149,53 @@ Only one listener on port 3000 after `npm run dev`; homepage returns HTTP 200; n
 
 #### References
 `HOW_IT_WORKS.md`; `CHANGELOG.md` (2026-10-25).
+
+---
+
+### ADR-003: Publish to GitHub as `origin/main` without rewriting existing history
+Date: 2026-10-25
+Status: ACCEPTED
+Decision owner: Project owner
+
+#### Context
+The verified project needed a canonical public remote. `https://github.com/EdwardKwinane/Dash-.git` existed but was empty. Local history contained an earlier import commit (`1cb153e`) that had committed `dash-app/node_modules.bak` before it was removed in `4738005`; the blobs (15,572 objects, largest 86.27 MB) remain reachable in history. GitHub warns on the large file during push.
+
+#### Decision drivers
+- Publish the verified project without losing or rewriting history.
+- Keep one canonical remote and branch.
+- Avoid destructive operations on a shared/public repository.
+- Preserve the mandated local root `Dash#`.
+
+#### Options considered
+1. **Rewrite history with `git filter-repo` and force-push** — rejected for now: destructive, overwrites published commits, and requires explicit owner coordination.
+2. **Recreate the empty GitHub repository and push cleaned history** — viable later, but also destructive to the existing remote and out of scope for this task.
+3. **Publish as-is with `origin/main` and document the historical bloat** — accepted: non-destructive and preserves all history.
+
+#### Decision
+Configure `origin` → `https://github.com/EdwardKwinane/Dash-.git`; use `main` with upstream tracking (trunk-based, per `GIT_WORKFLOW.md`). Push normally (no force). Do **not** rewrite history in this task. Treat the `node_modules.bak` blobs as a known repository-hygiene debt.
+
+#### Rationale
+It publishes the verified state immediately while respecting the prohibition on force-pushing or discarding history.
+
+#### Consequences
+Positive: canonical remote and branch established; full history preserved; push verified.
+Negative: repository history and clone size are inflated by the old `node_modules.bak` blobs.
+New obligations: plan a history purge (or repository recreation) with owner approval; add a pre-push large-file check to the release routine.
+
+#### Security/privacy impact
+No secrets were published. The only sensitive-looking strings in history are `dotenv` README placeholders.
+
+#### Cost impact
+Larger clone/storage footprint on GitHub; no direct monetary cost at current size.
+
+#### Migration and rollback
+Remediation requires `git filter-repo --path dash-app/node_modules.bak --invert-paths` followed by a coordinated force-push, or deleting and recreating the remote. Both need owner approval and a fresh clone for collaborators.
+
+#### Validation
+`git ls-remote --heads origin` returns `refs/heads/main` at the local HEAD SHA; `gh api repos/EdwardKwinane/Dash-/commits/main` matches.
+
+#### References
+`CHANGELOG.md` (2026-10-25 repository publication); `PROJECT_CONTEXT.md` §4 and §12.
 
 ---
 

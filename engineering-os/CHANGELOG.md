@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## Repository publication — GitHub (2026-10-25)
+
+### Published
+- Added remote `origin` → `https://github.com/EdwardKwinane/Dash-.git` (public). The target repository existed but was **empty** (no branches), so no remote history had to be integrated.
+- Pushed local `main` (trunk-based, per `GIT_WORKFLOW.md`) with upstream tracking: `git push -u origin main`.
+- Published commit: `f77af9b9c7a71bd45dc520fed3fcb0939a65be75` — `Document root lint command in Engineering OS`. Remote `refs/heads/main` confirmed at this SHA.
+- Pre-push verification: `npm run lint` exit 0; `npm run build` exit 0 (all routes generated); working tree clean.
+- Content audit: 91 tracked files, no `.env` files, no secrets, no `node_modules/` or `.next/` in the current tree. The RSA-key strings found in history are `dotenv` README placeholders (`Kh9NV...`) inside the previously committed `node_modules.bak`, not credentials.
+
+### Known issue (not remediated)
+- GitHub reported `GH001` for `dash-app/node_modules.bak/@next/swc-darwin-arm64/next-swc.darwin-arm64.node` (86.27 MB). The `node_modules.bak` backup was committed in `1cb153e` and deleted in `4738005`; it remains in history (15,572 objects, ~66 MB `.git`). Removing it requires a history rewrite and force-push, which was **not** performed because it would overwrite published history. See ADR-003 in `DECISIONS.md`.
+
 ## Dash# storefront — duplicate dev server, styling and render fixes (2026-10-25)
 
 ### Fixed

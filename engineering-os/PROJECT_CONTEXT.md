@@ -39,6 +39,7 @@ Fastest authoritative orientation for humans and agents entering the project. It
 Do not replace an approved stack component without an accepted ADR.
 
 ## 4. Environments and delivery
+- Source repository (canonical): `https://github.com/EdwardKwinane/Dash-.git` (remote `origin`, branch `main`, public)
 - Local development: `npm run dev` from `/Users/user/Developer/Dash#` → `http://localhost:3000`
 - Preview: none configured
 - Staging: none configured
@@ -135,6 +136,7 @@ cd "/Users/user/Developer/Dash#" && npm run build
 
 ## 12. Current risks and open decisions
 - **Recurring pitfall:** starting `next dev` from a different working directory (or via `npm --prefix`) creates competing dev-server registrations and stale `.next` directories. Always use the root script. See `HOW_IT_WORKS.md`.
+- **Repository history contains `node_modules.bak`.** Commit `1cb153e` imported the dependency backup into history (15,572 objects; largest blob 86.27 MB). It is removed from the current tree and ignored, but the blobs remain in history and were published with the initial push. GitHub warned about the large file. Purging it requires a history rewrite (`git filter-repo`) plus a coordinated force-push, or recreating the repository; this was deliberately **not** done unilaterally. See ADR-003.
 - Catalogue is seeded demo data; no availability, delivery or warranty claim is real.
 - No automated tests; verification is currently lint + type-check + production build + manual route/visual checks.
 - Deployment platform, payment provider and fulfilment provider remain undecided.
