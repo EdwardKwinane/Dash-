@@ -1,5 +1,34 @@
 # CHANGELOG
 
+## Navigation rebuild — navbar2 mega-menu (2026-10-25)
+
+Branch: `feature/storefront-quality-sprint`, stacked on the quality sprint. Not pushed.
+
+### What changed
+- Added `dash-app/src/components/ui/navbar2.tsx` and replaced the two-tier `header.tsx` in the root layout with it, so only one header renders.
+- **Shop mega-menu**: a disclosure button (not hover-only) reveals a 680 px panel listing all seven real categories with their descriptions and linking to `/categories/<slug>`, a featured product card taken from real catalogue data (name, formatted ZAR price, image, link to the product page), and a "Browse all products →" link to `/products`.
+- **Fixed desktop links**: Laptops → `/categories/laptops-computers`, Smartphones → `/categories/smartphones`, Audio → `/categories/headphones-earbuds`, Accessories → `/categories/accessories`.
+- **Support menu**: small disclosure dropdown to the existing `/contact`, `/shipping`, `/returns`, `/warranty` pages.
+- **Deliberately omitted**: "Deals" (no deals route or data exists), an account entry point (no account experience exists), and any language selector. No dead `#` links — a unit test asserts every rendered link has a real `href`.
+- **Search**: the header reuses the existing `SearchBar` (single implementation), shown inline on desktop and inside the mobile menu below `lg`.
+- **Cart**: the cart icon keeps the real count from the cart context with a pill badge and an accessible label (`Cart, N items` / `Cart, empty`); hydration-safe via the existing `isHydrated`-aware context.
+- **Mobile (below `lg`)**: compact row (logo, cart, hamburger toggle with `aria-expanded`/`aria-controls`); the menu panel holds search, "All products", all seven categories, and support links; closes on link click, Escape, and outside pointer-down.
+- **Interaction safety**: opening one menu closes the others; Escape returns focus to the trigger; outside `pointerdown` closes without stealing clicks; navigation closes all menus (route-snapshot state, no setState-in-effect).
+- **Motion**: open panels animate 200 ms ease-out via a Tailwind keyframe; the global `prefers-reduced-motion` rule neutralises it. No `motion` or `react-icons` dependency was added — existing `lucide-react` and CSS cover everything.
+- Added a `menu-reveal` keyframe/animation token to `tailwind.config.ts`.
+
+### Files
+- Created: `dash-app/src/components/ui/navbar2.tsx`, `dash-app/src/components/ui/navbar2.test.tsx`, `dash-app/e2e/navbar.spec.ts`.
+- Deleted: `dash-app/src/components/layout/header.tsx`, `dash-app/src/components/layout/header.test.tsx`.
+- Changed: `dash-app/src/app/layout.tsx`, `dash-app/tailwind.config.ts`.
+
+### Verified
+- `npm run lint` → exit 0; `npx tsc --noEmit` → exit 0.
+- `npm test` → 12 files / **107 tests passed** (navbar2 unit tests cover mega-menu toggle, Escape + focus return, outside-click close, close-on-navigate, real catalogue links, cart label, search submission, and the mobile menu).
+- `npm run build` → success.
+- `npx playwright test` → **11 passed** (mega-menu open/close/outside-click/navigate, support menu, header search, cart badge count, plus the existing journey and mobile suites).
+- Visual inspection with headless Chrome at 1440 px, 768 px and 390 px: real logo, no horizontal overflow (`scrollWidth === clientWidth` at all three widths), no duplicate ids, no console errors or warnings, panel overlaps the page content cleanly without layout shift.
+
 ## Storefront quality sprint — search, catalogue, cart, demo checkout, tests and CI (2026-10-25)
 
 Branch: `feature/storefront-quality-sprint` (from `75b4b44`). Not pushed at the time of writing; `main` is unchanged.

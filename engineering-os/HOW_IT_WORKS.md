@@ -1,6 +1,6 @@
 # HOW_IT_WORKS.md — Human-Readable System Guide
 
-Version: 1.2
+Version: 1.3
 Status: Active
 Last updated: 2026-10-25
 
@@ -15,7 +15,7 @@ Explain the product and its operation to a competent human who did not build it.
 ## 3. End-to-end critical flows
 
 ### Flow 1 — Search, filter and sort
-1. The header search field submits to `/search?q=…` (no full page reload). `/search` is a server component that reads `searchParams`.
+1. The `Navbar2` header (`src/components/ui/navbar2.tsx`) provides the main entry points: the Shop disclosure mega-menu lists every real category with descriptions and a featured product, the search field submits to `/search?q=…` (no full page reload), and the cart icon shows the real item count. `/search` is a server component that reads `searchParams`.
 2. `parseCatalogQuery` (`src/lib/catalog.ts`) trims and normalises the term, validates category/brand/price/stock/sort values and ignores anything unknown.
 3. `queryCatalog` matches every whitespace-separated token against product name, brand, category, subcategory, SKU, description, key selling points and specification values. Matching is case- and diacritic-insensitive.
 4. Filter changes (category, brand, price band, in-stock) and sorting write the new query to the URL; the server re-renders the result list. Because the query is in the URL, results survive reloads and can be shared.

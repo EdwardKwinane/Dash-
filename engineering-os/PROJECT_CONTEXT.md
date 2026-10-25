@@ -103,7 +103,7 @@ No payment, email, analytics, AI or shipping provider is integrated.
 ## 10. Repository map
 - Application source: `dash-app/src/`
   - Routes: `dash-app/src/app/` (`products`, `products/[slug]`, `search`, `categories/[slug]`, `cart`, `checkout`, `checkout/success`, info pages, `not-found`, `error`)
-  - Components: `dash-app/src/components/` (`layout`, `product`, `catalog`, `search`, `home`, `ui`)
+  - Components: `dash-app/src/components/` (`layout`, `product`, `catalog`, `search`, `home`, `ui` — navigation lives in `ui/navbar2.tsx`)
   - State: `dash-app/src/contexts/cart-context.tsx`
   - Domain logic: `dash-app/src/lib/` (`catalog.ts`, `cart.ts`, `validation.ts`, `format.ts`)
   - Data: `dash-app/src/lib/data/products.ts`

@@ -24,6 +24,7 @@ PROPOSED / ACCEPTED / SUPERSEDED / DEPRECATED / REJECTED
 | ADR-009 | Allow `127.0.0.1` as a development origin | ACCEPTED | 2026-10-25 | — |
 | ADR-010 | Run local Vitest through a shadow-copy launcher for the `#` path | ACCEPTED | 2026-10-25 | — |
 | ADR-011 | Gate changes on a GitHub Actions quality + E2E pipeline | ACCEPTED | 2026-10-25 | — |
+| ADR-012 | Replace the two-tier header with a disclosure mega-menu navbar | ACCEPTED | 2026-10-25 | — |
 
 ## 4. ADR template
 ### ADR-XXX: Decision title
@@ -584,6 +585,51 @@ Workflow YAML parses with two jobs; every command it runs has been executed loca
 
 #### References
 `CHANGELOG.md` (2026-10-25); `TESTING_STRATEGY.md`; ADR-005.
+
+---
+
+### ADR-012: Replace the two-tier header with a disclosure mega-menu navbar
+Date: 2026-10-25
+Status: ACCEPTED
+Decision owner: Project owner
+
+#### Context
+The storefront header was a two-tier row (logo/search/cart on top, category links below). Product discovery needs a richer Shop surface, and a navigation rebuild (`navbar2`) was requested as a focused, premium-nav work item.
+
+#### Decision drivers
+- One header rendered everywhere; no duplicated navigation.
+- Real routes and real catalogue data only — no invented destinations.
+- Keyboard/touch support; never hover-only menus.
+- No layout shift; restrained motion; existing design tokens.
+- No new dependencies unless unavoidable.
+
+#### Options considered
+1. **Adapt a hover/focus mega-menu from a UI kit** — rejected: hover-only menus fail touch users and need a11y scaffolding beyond this project's scale.
+2. **Click/tap disclosure mega-menu with CSS keyframes** — accepted: predictable, testable, keyboard-operable; keyframes run in CSS so no animation library is required (existing `lucide-react` icons and Tailwind cover everything).
+3. **Keep both nav patterns (old header + navbar2)** — rejected: two headers violates the integration requirement and confuses landmarks.
+
+#### Decision
+`src/components/ui/navbar2.tsx` is the single navigation component, rendered by the root layout. Menus are disclosure widgets (`aria-expanded`, `aria-controls`) toggled by click; panels animate open with a Tailwind keyframe token (`menu-reveal`, 200 ms) and are removed from the accessibility tree with `hidden` when closed. Menu state snapshots the pathname so navigation closes menus without writing state in an effect. The old `header.tsx` and its test were deleted; coverage moved to `navbar2.test.tsx` and `e2e/navbar.spec.ts`.
+
+#### Consequences
+Positive: premium, touch- and keyboard-safe navigation with zero new dependencies; no dead links (enforced by a unit test).
+Negative: the mega-menu panel is part of the header component, so it grows when categories grow; no hover-open shortcut for desktop users.
+New obligations: if "Deals" or an account experience is ever added, it must be added here with a real route/data source; any new dependency for animation needs an ADR.
+
+#### Security/privacy impact
+No data crosses a boundary. All navigation targets are first-party routes.
+
+#### Cost impact
+None.
+
+#### Migration and rollback
+The old header was deleted in the same commit; restoring it is a file restore plus a one-line layout change. `git revert` is sufficient.
+
+#### Validation
+`npm test` → 107 tests including the navbar2 suite; `npx playwright test` → 11 passed including mega-menu, support menu, search, cart-badge and mobile navigation; visual inspection at 1440/768/390 with no overflow, no duplicate ids and a clean console.
+
+#### References
+`CHANGELOG.md` (2026-10-25 navigation rebuild); `src/components/ui/navbar2.tsx`; `src/components/search/search-bar.tsx`.
 
 ---
 

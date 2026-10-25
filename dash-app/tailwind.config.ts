@@ -45,6 +45,16 @@ const config: Config = {
         card: "8px",
         pill: "9999px",
       },
+      keyframes: {
+        // Navigation menu panels (navbar2): fade and settle over ~200ms.
+        "menu-reveal": {
+          from: { opacity: "0", transform: "translateY(-4px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+      },
+      animation: {
+        "menu-reveal": "menu-reveal 200ms ease-out",
+      },
     },
   },
   plugins: [],
