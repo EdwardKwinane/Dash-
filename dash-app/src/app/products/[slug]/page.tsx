@@ -39,11 +39,14 @@ export default function ProductDetailPage() {
   };
 
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-white">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
           <div className="space-y-4">
             <div className="aspect-square bg-[#F9FAFB] rounded-lg overflow-hidden border border-[#E5E7EB]">
+              {/* Seeded demo imagery served from a remote host; next/image would
+                  require adding that host to remotePatterns in next.config.ts. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={product.images[0]}
                 alt={product.name}

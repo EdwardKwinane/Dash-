@@ -100,7 +100,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       try {
         const parsed = JSON.parse(savedCart);
         dispatch({ type: "LOAD_CART", payload: parsed });
-      } catch (e) {
+      } catch {
         console.error("Failed to load cart");
       }
     }

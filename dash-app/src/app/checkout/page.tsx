@@ -3,8 +3,9 @@
 import { useCart } from "@/contexts/cart-context";
 import { formatPrice } from "@/lib/data/products";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function CheckoutPage() {
   const { state, clearCart } = useCart();
@@ -21,19 +22,49 @@ export default function CheckoutPage() {
   });
   const [isProcessing, setIsProcessing] = useState(false);
 
-  if (state.items.length === 0) {
-    router.push("/cart");
-    return null;
+  const isEmpty = state.items.length === 0;
+
+  // Redirect in an effect, never during render: running router.push() while
+  // rendering breaks server prerendering (location is not defined).
+  useEffect(() => {
+    if (isEmpty) {
+      router.push("/cart");
+    }
+  }, [isEmpty, router]);
+
+  if (isEmpty) {
+    return (
+      <div className="bg-white">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+          <h1 className="text-3xl font-bold text-[#0A0A0A] mb-4">
+            Your cart is empty
+          </h1>
+          <p className="text-[#52525B] mb-8">
+            Add a product before continuing to checkout.
+          </p>
+          <Button asChild className="bg-[#A855F7] hover:bg-[#9333EA] text-white">
+            <Link href="/products">Browse products</Link>
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
-    
+
+    // The reference is created here, in an event handler, so the confirmation
+    // page can render a stable value during prerendering and hydration.
+    const orderReference = `DASH-${Math.random()
+      .toString(36)
+      .slice(2, 11)
+      .toUpperCase()}`;
+
     // Simulate processing
     setTimeout(() => {
       clearCart();
-      router.push("/checkout/success");
+      router.push(`/checkout/success?ref=${orderReference}`);
     }, 1500);
   };
 
@@ -42,7 +73,7 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-white">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-[#0A0A0A] mb-8">Checkout</h1>
         
@@ -147,6 +178,7 @@ export default function CheckoutPage() {
                   {state.items.map((item, idx) => (
                     <div key={idx} className="flex gap-3">
                       <div className="w-16 h-16 bg-white rounded overflow-hidden flex-shrink-0 border border-[#E5E7EB]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={item.product.images[0]} alt={item.product.name} className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">

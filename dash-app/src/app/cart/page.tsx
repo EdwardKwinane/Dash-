@@ -11,7 +11,7 @@ export default function CartPage() {
 
   if (state.items.length === 0) {
     return (
-      <div className="bg-white min-h-screen">
+      <div className="bg-white">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
           <h1 className="text-3xl font-bold text-[#0A0A0A] mb-4">Your Cart is Empty</h1>
           <p className="text-[#52525B] mb-8">Add some products to get started</p>
@@ -24,7 +24,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-white">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-[#0A0A0A] mb-8">Shopping Cart</h1>
         
@@ -33,6 +33,7 @@ export default function CartPage() {
             {state.items.map((item, idx) => (
               <div key={`${item.product.id}-${item.selectedVariant}-${idx}`} className="flex gap-4 p-4 border border-[#E5E7EB] rounded-lg bg-white">
                 <div className="w-24 h-24 bg-[#F9FAFB] rounded-lg overflow-hidden flex-shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={item.product.images[0]}
                     alt={item.product.name}

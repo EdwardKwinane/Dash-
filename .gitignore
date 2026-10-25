@@ -37,3 +37,6 @@ next-env.d.ts
 
 # OS
 Thumbs.db
+
+# Stale dependency backups (never commit)
+node_modules.bak/

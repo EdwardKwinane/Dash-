@@ -1,24 +1,61 @@
+"use client";
+
 import Link from "next/link";
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { CheckCircle } from "lucide-react";
 
+/**
+ * Demo order confirmation.
+ *
+ * The reference arrives as a query parameter from the checkout flow, so the
+ * page renders identical markup on the server and client (no Math.random()
+ * during render, no hydration mismatch). Nothing here represents a real order.
+ */
+function OrderReference() {
+  const searchParams = useSearchParams();
+  const reference = searchParams.get("ref");
+
+  return (
+    <span className="font-mono font-medium text-ink">
+      {reference ?? "not available"}
+    </span>
+  );
+}
+
 export default function CheckoutSuccessPage() {
   return (
-    <div className="bg-white min-h-screen">
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-        <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-6" />
-        <h1 className="text-3xl md:text-4xl font-bold text-[#0A0A0A] mb-4">Order Placed Successfully!</h1>
-        <p className="text-lg text-[#52525B] mb-2">Thank you for your order</p>
-        <p className="text-[#52525B] mb-8">Order Reference: DASH-{Math.random().toString(36).substr(2, 9).toUpperCase()}</p>
-        <p className="text-[#52525B] mb-8 max-w-md mx-auto">
-          This is a demo order. In a production environment, you would receive a confirmation email and order updates.
+    <div className="bg-white">
+      <div className="mx-auto max-w-content px-4 py-16 text-center sm:px-6 lg:px-8">
+        <CheckCircle className="mx-auto mb-6 h-16 w-16 text-green-600" />
+        <h1 className="mb-4 text-3xl font-bold text-ink md:text-4xl">
+          Order placed
+        </h1>
+        <p className="mb-2 text-lg text-ink-muted">Thank you for your order</p>
+        <p className="mb-8 text-ink-muted">
+          Order reference:{" "}
+          <Suspense fallback={<span className="text-ink-muted">…</span>}>
+            <OrderReference />
+          </Suspense>
         </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button asChild className="bg-[#A855F7] hover:bg-[#9333EA] text-white">
-            <Link href="/products">Continue Shopping</Link>
+        <p className="mx-auto mb-8 max-w-md text-ink-muted">
+          This is a demo order. No payment was taken, no stock was reserved and
+          no confirmation email is sent.
+        </p>
+        <div className="flex flex-col justify-center gap-4 sm:flex-row">
+          <Button
+            asChild
+            className="h-auto rounded-card bg-brand px-6 py-3 text-white hover:bg-brand-hover"
+          >
+            <Link href="/products">Continue shopping</Link>
           </Button>
-          <Button asChild variant="outline" className="border-[#E5E7EB]">
-            <Link href="/">Back to Home</Link>
+          <Button
+            asChild
+            variant="outline"
+            className="h-auto rounded-card border-line px-6 py-3 text-ink hover:bg-surface"
+          >
+            <Link href="/">Back to home</Link>
           </Button>
         </div>
       </div>

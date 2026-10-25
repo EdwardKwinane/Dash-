@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 export function Footer() {
+  const year = 2026;
   return (
     <footer className="bg-[#F9FAFB] border-t border-[#E5E7EB] mt-16">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -15,7 +16,7 @@ export function Footer() {
               className="h-10 w-auto mb-4"
             />
             <p className="text-[#52525B] max-w-md">
-              South Africa's premium AI-powered multi-brand electronics retailer. 
+              South Africa&apos;s premium AI-powered multi-brand electronics retailer. 
               Quality products, competitive prices, and exceptional service.
             </p>
           </div>
@@ -41,7 +42,7 @@ export function Footer() {
         </div>
         
         <div className="border-t border-[#E5E7EB] mt-8 pt-8 text-center text-[#52525B]">
-          <p>&copy; {new Date().getFullYear()} Dash#. All rights reserved.</p>
+          <p>&copy; {year} Dash#. All rights reserved.</p>
         </div>
       </div>
     </footer>
