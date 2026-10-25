@@ -1,5 +1,37 @@
 # CHANGELOG
 
+## Repository history purge — published (2026-10-25)
+
+### Published
+- `dash-app/node_modules.bak` removed from every commit and `main` republished with one explicit-lease force-push, authorised by the owner in ADR-004:
+  `git push --force-with-lease=main:2716c047894249eab0e1973dff00277e5cc43e20 github refs/heads/main:refs/heads/main`.
+- Previous published SHA `2716c047894249eab0e1973dff00277e5cc43e20` → new published SHA **`ac09c1f004c2b31aa913d5c0f58b90b8c9a3f4bd`**.
+- Rewrite performed in an isolated mirror with the built-in `git filter-branch` (`git-filter-repo` is still not installed); only `dash-app/node_modules.bak` was removed. No other branch, tag or ref was touched.
+- Published chain (7 commits): `97ddf4b` → `21bd0b8` → `96002bc` → `b492ce6` → `7b93e25` → `8b4b619` → `ac09c1f`. Commit messages, authors, emails and dates are preserved.
+
+### Measured result
+
+| Metric | Before (`2716c04`) | After (`ac09c1f`) |
+|---|---:|---:|
+| `.git` | 66 MB | 604 KB (candidate mirror); 612 KB freshly fetched from GitHub |
+| Pack | 65.11 MiB | 487.43 KiB (candidate); 498.01 KiB (fetched) |
+| Objects | 15,743 | 181 |
+| Blobs / trees / commits | 13,852 / 1,886 / 5 | 121 / 53 / 7 |
+| Tracked files | 91 | 91 |
+| `HEAD^{tree}` | `141a451…` | `c2b3040…` |
+
+Pack reduction: **≈99.3%**. The working repository's local `.git` is still ~67 MB because the pre-rewrite pack and reflog remain locally; those objects are unreachable from `main` and can be pruned later. The recovery bundle is the authoritative backup.
+
+### Verified after publication
+- `git ls-remote origin` and `gh api repos/EdwardKwinane/Dash-/commits/main` both return **`ac09c1f004c2b31aa913d5c0f58b90b8c9a3f4bd`**.
+- A fresh fetch **from GitHub** into an empty bare repository: 7 commits, 181 objects, `dash-app/node_modules.bak` objects **0**, 86.27 MiB blob `11d4a09…` **absent**, `git fsck --full` clean, `HEAD^{tree}` = `c2b3040…`, 91 files.
+- Fresh clone of the publish candidate: `npm ci` 0, `npm run lint` 0, `npx tsc --noEmit` 0, `npm run build` 0; routes `/` 200, `/products` 200, `/categories/smartphones` 200, `/categories/does-not-exist` 404, `/about` 200, `/cart` 200, `/checkout` 200.
+- Working repository reset to `origin/main` (clean tree, upstream tracking intact); `npm run lint` 0, `npx tsc --noEmit` 0, `npm run build` 0.
+
+### Recovery
+- Original history and SHAs: `.migration-backup/history-audit-20261025-090411/Dash-pre-rewrite.bundle` (65 MB, verified complete). Restore with `git clone <bundle> restore/` and force-push the original `main` if the rewrite ever has to be undone.
+- Prepared artifacts retained: `publish-candidate.git`, `publish-candidate-approved.git`, `Dash-verify*`, `remote-verify.git` under the same directory.
+
 ## Repository history audit and cleanup rehearsal — `node_modules.bak` (2026-10-25)
 
 ### Measured (read-only audit of published history)
@@ -22,9 +54,9 @@
 - `npm ci` exit 0; `npm run lint` exit 0; `npx tsc --noEmit` exit 0; `npm run build` exit 0 (all routes generated).
 - Route checks on port 3100: `/` 200, `/products` 200, `/categories/smartphones` 200, `/categories/does-not-exist` 404, `/about` 200, `/cart` 200, `/checkout` 200.
 
-### Not done
-- No rewrite of the working repository, no force-push, no remote branch deletion, no repository recreation. `origin/main` remains `2716c04…`. Publication requires separate explicit approval (ADR-004).
-- The rehearsal figures above were measured from the published tip `2716c04…`; this changelog entry is a later commit, so the publication run must be repeated from the final `main` tip and will produce a different SHA mapping.
+### Not done at rehearsal time (superseded)
+- No rewrite of the working repository, no force-push, no remote branch deletion, no repository recreation. At that point `origin/main` remained `2716c04…`; publication was subsequently approved and completed — see "Repository history purge — published" above.
+- The rehearsal figures above were measured from the published tip `2716c04…`; the publication run was repeated from the approved tip and produced the SHA mapping recorded above.
 
 ## Repository publication — GitHub (2026-10-25)
 

@@ -136,7 +136,7 @@ cd "/Users/user/Developer/Dash#" && npm run build
 
 ## 12. Current risks and open decisions
 - **Recurring pitfall:** starting `next dev` from a different working directory (or via `npm --prefix`) creates competing dev-server registrations and stale `.next` directories. Always use the root script. See `HOW_IT_WORKS.md`.
-- **Repository history still contains `node_modules.bak` (remediation rehearsed, not published).** `1cb153e` imported the dependency backup and `4738005` deleted it. It is absent from the current tree but remains reachable from `main`: 13,735 blobs, 220.17 MB uncompressed, 63.78 MiB compressed — 97.96% of the 65.11 MiB pack (`.git` 66 MB). The largest blob is `next-swc.darwin-arm64.node`, 86.27 MiB. A removal rehearsal in an isolated mirror cut the repository to 592 KiB (482.12 KiB pack, 171 objects) with the current tree byte-identical (`141a451…`) and lint, type-check, build and route checks passing. Every commit SHA changes, so publication needs a `--force-with-lease` push and separate owner approval. See ADR-004; the rollback bundle is in `.migration-backup/history-audit-20261025-090411/`.
+- **Repository history purge completed (2026-10-25).** `dash-app/node_modules.bak` was removed from every commit and `main` republished as `ac09c1f…` (previously `2716c04…`). `.git` fell from 66 MB to ~0.6 MB and the pack from 65.11 MiB to 487.43 KiB (≈99.3%); the 86.27 MiB `next-swc.darwin-arm64.node` blob and all 13,735 backup blobs are no longer reachable. The current tree is unchanged (`c2b3040…`, 91 files) and lint, type-check, build and route checks pass. Recovery bundle: `.migration-backup/history-audit-20261025-090411/Dash-pre-rewrite.bundle`. See ADR-004.
 - Catalogue is seeded demo data; no availability, delivery or warranty claim is real.
 - No automated tests; verification is currently lint + type-check + production build + manual route/visual checks.
 - Deployment platform, payment provider and fulfilment provider remain undecided.
@@ -145,3 +145,4 @@ cd "/Users/user/Developer/Dash#" && npm run build
 - Date: 2026-10-25
 - Verified by: AI agent (OpenCode)
 - What was checked: `npx tsc --noEmit` exit 0; `npx eslint .` exit 0; `npm run build` exit 0; all routes return expected status codes; homepage visually inspected via headless Chrome; served CSS contains brand tokens and Tailwind utilities.
+- Post-publication check (2026-10-25): remote `main` = `ac09c1f…`; a fresh fetch from GitHub contains 0 `dash-app/node_modules.bak` objects; working checkout aligned to `origin/main` with `npm run lint`, `npx tsc --noEmit` and `npm run build` all exit 0.

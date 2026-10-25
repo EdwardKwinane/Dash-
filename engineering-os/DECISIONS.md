@@ -261,6 +261,22 @@ Rehearsed on 2026-10-25 in an isolated mirror cloned from `2716c04…`:
 - Size: 171 objects (117 blobs, 49 trees, 5 commits); pack **482.12 KiB**; repository **592 KiB** (from 65.11 MiB, −99.3%).
 - On a fresh clone: `npm ci` 0, `npm run lint` 0, `npx tsc --noEmit` 0, `npm run build` 0; routes `/` 200, `/products` 200, `/categories/smartphones` 200, `/categories/does-not-exist` 404, `/about` 200, `/cart` 200, `/checkout` 200.
 
+#### Outcome (published 2026-10-25)
+Approval was recorded in this ADR and the approved candidate was rebuilt from the approval commit, then published with the single authorised push:
+
+```bash
+git push --force-with-lease=main:2716c047894249eab0e1973dff00277e5cc43e20 \
+  github refs/heads/main:refs/heads/main
+```
+
+- Previous published SHA `2716c047894249eab0e1973dff00277e5cc43e20` → **`ac09c1f004c2b31aa913d5c0f58b90b8c9a3f4bd`** (7 commits).
+- `git ls-remote origin` and the GitHub API both report `ac09c1f…`.
+- Fresh fetch from GitHub: 181 objects, 0 `dash-app/node_modules.bak` objects, blob `11d4a09…` absent, `git fsck --full` clean, `HEAD^{tree}` = `c2b3040d9c9d9debe4e5f6c92f64218bfa57b349`, 91 files.
+- Size: `.git` 66 MB → 604 KB (candidate mirror); pack 65.11 MiB → 487.43 KiB (498.01 KiB as fetched over the network) — ≈99.3% smaller.
+- Working repository reset to `origin/main`; `npm run lint`, `npx tsc --noEmit` and `npm run build` all exit 0.
+- Old objects may remain reachable on GitHub by direct SHA until GitHub garbage-collects them. No support request or repository recreation was performed.
+- Recovery: `.migration-backup/history-audit-20261025-090411/Dash-pre-rewrite.bundle` (65 MB, complete history at `2716c04…`).
+
 #### References
 `CHANGELOG.md` (2026-10-25 history audit and cleanup rehearsal); ADR-003; `PROJECT_CONTEXT.md` §12; `GIT_WORKFLOW.md` §7.
 
