@@ -16,7 +16,7 @@ PROPOSED / ACCEPTED / SUPERSEDED / DEPRECATED / REJECTED
 | ADR-001 | Use Tailwind CSS v3 instead of v4 for this repository | ACCEPTED | 2026-10-25 | — |
 | ADR-002 | Start the single dev server from the repo root script | ACCEPTED | 2026-10-25 | — |
 | ADR-003 | Publish to GitHub as `origin/main` without rewriting existing history | ACCEPTED | 2026-10-25 | — |
-| ADR-004 | Purge `dash-app/node_modules.bak` from history and republish `main` | PROPOSED | 2026-10-25 | — |
+| ADR-004 | Purge `dash-app/node_modules.bak` from history and republish `main` | ACCEPTED | 2026-10-25 | — |
 
 ## 4. ADR template
 ### ADR-XXX: Decision title
@@ -202,8 +202,9 @@ Remediation requires `git filter-repo --path dash-app/node_modules.bak --invert-
 
 ### ADR-004: Purge `dash-app/node_modules.bak` from history and republish `main`
 Date: 2026-10-25
-Status: PROPOSED
+Status: ACCEPTED
 Decision owner: Project owner
+Owner approval: 2026-10-25 — explicit written approval to publish the rehearsed rewrite, as a one-time scoped exception to `GIT_WORKFLOW.md` §5 (no force-push to `main`).
 
 #### Context
 Published `main` (`2716c04…`) is only 91 files / 1.08 MB, but its history still carries `dash-app/node_modules.bak`, which was committed in `1cb153e` and deleted in `4738005`. Measured on the published history:
@@ -217,7 +218,7 @@ Published `main` (`2716c04…`) is only 91 files / 1.08 MB, but its history stil
 | Largest blob | `next-swc.darwin-arm64.node`, 86.27 MiB (90,462,712 B), 29.88 MiB compressed |
 | Non-`node_modules.bak` blobs | 117 blobs, 1.07 MB |
 
-GitHub flagged the 86.27 MB file (`GH001`) on the initial push. ADR-003 deliberately published without rewriting history and recorded this as known hygiene debt with an obligation to plan a purge. This ADR proposes that purge. No genuine secrets are involved; the only sensitive-looking strings are `dotenv` README placeholders.
+GitHub flagged the 86.27 MB file (`GH001`) on the initial push. ADR-003 deliberately published without rewriting history and recorded this as known hygiene debt with an obligation to plan a purge. This ADR records the decision to perform that purge. No genuine secrets are involved; the only sensitive-looking strings are `dotenv` README placeholders.
 
 #### Decision drivers
 - Remove the dominant historical bloat without altering current content.
@@ -232,7 +233,7 @@ GitHub flagged the 86.27 MB file (`GH001`) on the initial push. ADR-003 delibera
 3. **Recreate the repository / publish a clean new history** — guarantees a fresh object store, but destroys repository identity and settings. With 0 forks, 0 PRs, 0 issues, 0 stars, 0 tags and 0 releases the loss is small, yet it is more destructive than option 2 for no functional gain. Rejected unless immediate purging from GitHub's object store is mandatory.
 
 #### Decision
-Rewrite history in an **isolated mirror** to remove only `dash-app/node_modules.bak` from every commit, validate the result, and publish it with a single `git push --force-with-lease origin main` **only after separate explicit owner approval**. Use the built-in `git filter-branch` fallback because `git-filter-repo` is not installed and installing tools was not approved.
+Rewrite history in an **isolated mirror** to remove only `dash-app/node_modules.bak` from every commit, validate the result, and publish it with a single explicit-lease force-push of `refs/heads/main` **only after separate explicit owner approval**. Use the built-in `git filter-branch` fallback because `git-filter-repo` is not installed and installing tools was not approved. Owner approval was granted on 2026-10-25 for exactly one publication of `refs/heads/main`; no other branch, tag or ref may be force-pushed.
 
 #### Rationale
 It removes 97.96% of the pack while preserving the repository, all history metadata and the exact current tree. Rehearsing in a mirror and validating before publishing keeps the destructive step reversible and evidence-based.
@@ -249,7 +250,7 @@ None. No secrets are removed or exposed. The removed content is third-party depe
 Reduces clone, storage and bandwidth footprint on GitHub and for every collaborator. No monetary cost at current size.
 
 #### Migration and rollback
-- **Migration:** rebuild the mirror from the final `main` tip, rewrite, verify, then `git push --force-with-lease origin main`, and `git fetch && git reset --hard origin/main` in the working repository.
+- **Migration:** rebuild the mirror from the final `main` tip, rewrite, verify, then perform one explicit-lease force-push of `refs/heads/main`, and `git fetch && git reset --hard origin/main` in the working repository.
 - **Rollback:** the pre-rewrite full-history bundle (`.migration-backup/history-audit-20261025-090411/Dash-pre-rewrite.bundle`, 65 MB) restores the original history and SHAs; re-push the original `main` if the rewrite must be undone.
 - The working repository's `main` is not rewritten during preparation, so rollback is simply "do not publish".
 
