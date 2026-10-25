@@ -7,6 +7,7 @@ import { ProductPurchasePanel } from "@/components/product/product-purchase-pane
 import { categories, getProductBySlug, products } from "@/lib/data/products";
 import { categoryNameToSlug } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
+import { productBadgeLabel } from "@/lib/product-badge";
 
 type ProductPageProps = {
   params: Promise<{ slug: string }>;
@@ -39,6 +40,12 @@ export async function generateMetadata({
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params;
   const product = getProductBySlug(slug);
+
+  // Unknown slugs render the branded not-found page with a real 404 status.
+  if (!product) notFound();
+
+  const badge = productBadgeLabel(product);
+
 
   // Unknown slugs render the branded not-found page with a real 404 status.
   if (!product) notFound();
@@ -89,7 +96,16 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
           <div className="space-y-6">
             <div>
-              <p className="mb-2 text-ink-muted">{product.brand}</p>
+              <div className="mb-2 flex items-center gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                  {product.brand}
+                </p>
+                {badge && (
+                  <span className="rounded-pill bg-brand px-2.5 py-1 text-xs font-medium text-white">
+                    {badge}
+                  </span>
+                )}
+              </div>
               <h1 className="mb-4 text-3xl font-bold text-ink md:text-4xl">
                 {product.name}
               </h1>

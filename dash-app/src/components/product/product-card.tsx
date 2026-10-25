@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { formatPrice } from "@/lib/format";
+import { productBadgeLabel } from "@/lib/product-badge";
 import type { Product } from "@/types/product";
 
 type ProductCardProps = {
@@ -14,13 +15,7 @@ type ProductCardProps = {
  * Keeps price/badge/stock presentation consistent across routes.
  */
 export function ProductCard({ product, priority = false }: ProductCardProps) {
-  const badge = product.onSale
-    ? "Sale"
-    : product.newArrival
-      ? "New"
-      : product.featured
-        ? "Featured"
-        : null;
+  const badge = productBadgeLabel(product);
 
   return (
     <Link

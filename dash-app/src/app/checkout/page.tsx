@@ -286,7 +286,7 @@ export default function CheckoutPage() {
                 <ul className="space-y-3">
                   {state.items.map((item) => (
                     <li key={item.product.id} className="flex gap-3">
-                      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded border border-line bg-white">
+                      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-card border border-line bg-white">
                         <Image
                           src={item.product.images[0]}
                           alt={item.product.altText?.[0] ?? item.product.name}

@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## Product presentation consistency & catalogue trust sprint (2026-10-25)
+
+Branch: `feature/storefront-quality-sprint`, stacked on the homepage polish sprint. Not pushed.
+
+### What changed
+- New shared helper `dash-app/src/lib/product-badge.ts` (`productBadgeLabel`) — the single source of truth for the Sale/New/Featured badge (precedence Sale > New > Featured), used by both the product card and the product detail page so listing and detail can never disagree. The card's inline badge conditionals were replaced with the helper (no behaviour change).
+- Product detail page (`products/[slug]`): brand line restyled to the same uppercase kicker the cards use, and the product's badge now appears next to it in the same purple pill as on cards — the two views now present identical identity and price-discount signals. No new claims: the badge comes from catalogue flags, the strikethrough compare-at price and "reviews in demo data" wording were already there.
+- Demo checkout: order-summary thumbnails corrected from 4px `rounded` to the 8px `rounded-card` radius, matching every other thumbnail (cards, cart, detail, homepage).
+- New automated guardrails: `src/lib/data/products.test.ts` enforces catalogue invariants the whole storefront relies on (unique id/slug/SKU, route-safe slugs, positive integer-cent prices with `compareAtPrice > price`, stock/`inStock` coherence, real category assignment via `getProductsInCategory`, images only from the approved https Unsplash host, complete descriptive fields, sale claims backed by a compare-at price) and `src/lib/product-badge.test.ts` locks the badge precedence.
+
+### Catalogue/image audit findings (documented, no replacements)
+All six seeded product images were downloaded and visually inspected. Per the image-replacement policy, replacements require a verified matching asset; the repository has none (public/ contains only the brand logo, svgs) and Unsplash's site/API blocked automated verification attempts (HTTP 307/401 on `napi` search and `/s/photos` pages, plus headless-browser scraping produced no usable results). **No image was replaced.** Findings for review:
+1. **Galaxy S25 Ultra** — the photo demonstrably shows a Galaxy **S21 5G** (the phone lies on its retail box printed "S21 5G"). Confirmed model-level mismatch; the most prominent case (hero showcase + product page). Needs an owner-provided or verifiably sourced S25 Ultra asset.
+2. **Dell XPS 13 Plus** — the photo is unmistakably a **MacBook** (Apple unibody). Confirmed brand-level mismatch. Needs a verified XPS asset.
+3. **Logitech MX Master 3S** — the photo shows a compact symmetric travel-style mouse (M325-class), not the MX Master's characteristic sculpted ergonomic body. Confirmed model-level mismatch. Needs a verified asset.
+4. MacBook Pro 14" M4 — a lit-logo pre-2016 MacBook: brand correct, model unverifiable. Sony WH-1000XM5 / iPad Air 11" M3 — type correct, model unverifiable. Left unchanged; not actionable.
+- Presentation findings that were corrected: the detail page's divergent brand/badge presentation (badges existed only on cards) and the checkout thumbnail radius. Alt text was audited: because no `altText` is seeded, every meaningful product image falls back to the product name consistently across all six surfaces — acceptable and consistent, no change needed.
+
+### Files
+- Created: `dash-app/src/lib/product-badge.ts` (+ test), `dash-app/src/lib/data/products.test.ts`.
+- Changed: `dash-app/src/app/products/[slug]/page.tsx`, `dash-app/src/app/checkout/page.tsx`, `dash-app/src/components/product/product-card.tsx` (badge via shared helper).
+
+### Verified
+- `npm run lint` → exit 0; `npx tsc --noEmit` → exit 0; `npm test` → **14 files / 121 tests passed** (121 = 107 previous + 14 new guardrail tests); `npm run build` → success; `npx playwright test` → **15 passed**.
+- Visual inspection with headless Chrome at **1440 / 768 / 390px** on the product detail page (Sony WH-1000XM5, with Sale badge) and the demo checkout (pre-seeded 2-item cart): no horizontal overflow (`scrollWidth === clientWidth` at all widths), no heading skips, no duplicate ids, no images missing `alt`, console clean; checkout totals arithmetic verified on-screen (2 × R29,999.00 + R1,499.00 = R61,497.00).
+
 ## Homepage visual polish — hero showcase, category discovery, product cards (2026-10-25)
 
 Branch: `feature/storefront-quality-sprint`, stacked on the navbar2 sprint. Not pushed.
