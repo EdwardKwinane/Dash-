@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## Repository history audit and cleanup rehearsal — `node_modules.bak` (2026-10-25)
+
+### Measured (read-only audit of published history)
+- `.git` 66 MB; pack 65.11 MiB; 15,743 objects reachable from `main` (13,852 blobs, 1,886 trees, 5 commits).
+- `dash-app/node_modules.bak`: **13,735 blobs, 220.17 MB uncompressed, 63.78 MiB compressed — 97.96% of the pack**.
+- Largest object: `@next/swc-darwin-arm64/next-swc.darwin-arm64.node`, **86.27 MiB** (90,462,712 bytes), compressed 29.88 MiB — roughly 46% of the pack on its own.
+- Added in `1cb153e`, deleted in `4738005`. Absent from the current tree but reachable from `refs/heads/main` and `refs/remotes/origin/main` (blob `11d4a09…`).
+- Everything else in history is 117 blobs / 1.07 MB plus 0.78 MB of trees. No `.next`, `out`, `dist`, `build` or `.migration-backup` paths exist in history.
+- No genuine secrets in history. Secret-named paths are library files (`caniuse-lite/.../credential-management.js`, `prop-types/lib/ReactPropTypesSecret.js`); the RSA-looking strings are `dotenv` README placeholders.
+
+### Rehearsed (isolated, not published)
+- Full-history bundle (`Dash-pre-rewrite.bundle`, 65 MB) and a mirror clone were created under the git-ignored `.migration-backup/history-audit-20261025-090411/`. Published SHA `2716c04…` remains recoverable from the bundle.
+- `dash-app/node_modules.bak` was removed from every commit **in the mirror only**, using the built-in `git filter-branch` (`git-filter-repo` is not installed and was not installed). No other path was touched.
+- Rehearsal result (`main` = `7b93e25…`): 5 commits, 171 objects (117 blobs, 49 trees), pack **482.12 KiB**, repository **592 KiB** — a **99.3%** reduction from 65.11 MiB.
+- Current tree unchanged: `HEAD^{tree}` = `141a451a9c1803481d4a92b67ea163a2b0122f25`, identical to published `main`; 91 tracked files; commit messages, authors and dates preserved. Only the import commit's tree differs (`962c3d9…` → `d7c4bcb…`) because it no longer contains the backup.
+- All 5 commit SHAs change and the result is not a descendant of published `main`, so publication requires a force-push. See ADR-004.
+
+### Verified on a fresh clone of the cleaned mirror
+- `dash-app/node_modules.bak` reachable objects: **0**; 86.27 MiB blob `11d4a09…`: **absent**; `git fsck --full`: clean.
+- `npm ci` exit 0; `npm run lint` exit 0; `npx tsc --noEmit` exit 0; `npm run build` exit 0 (all routes generated).
+- Route checks on port 3100: `/` 200, `/products` 200, `/categories/smartphones` 200, `/categories/does-not-exist` 404, `/about` 200, `/cart` 200, `/checkout` 200.
+
+### Not done
+- No rewrite of the working repository, no force-push, no remote branch deletion, no repository recreation. `origin/main` remains `2716c04…`. Publication requires separate explicit approval (ADR-004).
+- The rehearsal figures above were measured from the published tip `2716c04…`; this changelog entry is a later commit, so the publication run must be repeated from the final `main` tip and will produce a different SHA mapping.
+
 ## Repository publication — GitHub (2026-10-25)
 
 ### Published
