@@ -14,7 +14,7 @@
 - **Footer pushed below the fold.** `main` had `min-h-screen` on top of page-level `min-h-screen` wrappers, creating a large blank gap. The layout is now a flex column (`body` `min-h-screen`, `main` `flex-1`) and redundant page-level `min-h-screen` classes were removed, so the footer follows content on every route.
 
 ### Changed
-- Root `package.json` added with `dev`/`build`/`start`/`lint` scripts (minimal; app keeps its own manifest and lockfile).
+- Root `package.json` added with `dev`/`build`/`start`/`lint` scripts (minimal; app keeps its own manifest and lockfile). The lint script runs `eslint` directly because Next.js 16 removed `next lint`.
 - `globals.css` rewritten to Tailwind directives plus brand tokens, focus ring and reduced-motion handling.
 - `/products` now uses the shared `ProductCard` component.
 - Footer apostrophe escaped; unused catch binding removed; `<img>` lint suppressions documented.

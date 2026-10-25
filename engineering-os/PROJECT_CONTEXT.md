@@ -120,7 +120,7 @@ cd "/Users/user/Developer/Dash#" && cd dash-app && npm install
 cd "/Users/user/Developer/Dash#" && npm run dev      # http://localhost:3000
 
 # lint/typecheck
-cd "/Users/user/Developer/Dash#/dash-app" && npx eslint .
+cd "/Users/user/Developer/Dash#" && npm run lint
 cd "/Users/user/Developer/Dash#/dash-app" && npx tsc --noEmit
 
 # test
