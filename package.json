@@ -6,6 +6,6 @@
     "dev": "cd dash-app && npx next dev",
     "build": "cd dash-app && npx next build",
     "start": "cd dash-app && npx next start",
-    "lint": "cd dash-app && npx next lint"
+    "lint": "cd dash-app && npx eslint ."
   }
 }
