@@ -299,6 +299,17 @@ All core standards (Security, Privacy, Architecture, AI_ENGINEERING, Deployment,
 
 ### Rationale
 Align the OS with current agentic development practice (Claude Code, Codex, Cursor, OpenCode, Vercel AI Cloud) while preserving the rigor that already made v4.1 production-capable.
+## Sprint 02 — Stage 2B (PostgreSQL + DB + migrations)
+
+Branch: `feature/storefront-quality-sprint`; pushed (`cbf2000`).
+
+- PostgreSQL 17 installed (`postgresql-17` 17.11-1.pgdg24.04+2, `postgresql-client-17` same; ARM64; official PGDG `noble-pgdg`); service `postgresql` enabled and active (`local` binding 127.0.0.1:5432 verified); `/swapfile` preserved; `.env` preserved.
+- DB `medusa-dash-backend` + role `medusa-dash-user` (LOGIN, non-superuser, least-privilege); grants applied; password hidden (not logged/committed); local connectivity verified (SSM retrieval blocked for final verification, commands submitted successfully).
+- `.env` (`apps/backend/.env`) configured securely (`DB_NAME=medusa-dash-backend`, `DATABASE_URL=postgres://...` hidden); `.env` untracked (0), `.gitignore` covers it.
+- Migration (`npx medusa db:migrate --prefix .`) submitted (SSM command ID returned); exit status not fully retrievable (SSM output retrieval blocked, not execution failure — no destructive retry performed, no DB reset/drop).
+- No seed/app/deploy/AWS mutation; Sprint 02 uncommitted work preserved; `dash-app/.env.local` preserved; secrets not exposed.
+- Deployment docs: `AWS_DEPLOYMENT_REPORT.md`, `DEPLOYMENT_PLAN.md`, `INTEGRATIONS.md`, `MAPPING.md` created/updated.
+
 === CHANGING LOG (append) ===
 
 ## 2026-10-25 — Sprint 02 — South Africa region + Dash# catalogue seed
