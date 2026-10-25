@@ -149,3 +149,23 @@ Architecture review is required before:
 
 ## 15. Documentation rule
 Significant architecture changes require an ADR and updates to diagrams or flows before the implementation is considered complete. Keep `PROJECT_CONTEXT.md` synchronized with the approved stack and applicable service profiles. Security-sensitive architecture changes also update `THREAT_MODEL.md`; new operational dependencies update `RUNBOOK.md`.
+=== ARCHITECTURE.md APPEND (verified) ===
+
+## Sprint 02 — South African region + Dash# catalogue seed (verified 2026-10-25)
+- Backend scaffolded apps/backend/ (ADR-014); seed idempotent via src/scripts/seed-dash-catalogue.ts.
+- DB verified: region = Europe/eur + South Africa/zar; categories 11 (4 scaffold + 7 Dash#); products 10 (4 scaffold + 6 Dash#, SKUs verified).
+- Second seed run clean; no EUR leakage on Dash# records; prices confirmed integer ZAR cents.
+- Tax automation disabled; delivery rates = 0 (documented); demo inventory clearly labelled; Dell XPS 13 Plus image deferred Sprint 04.
+- Store API currently reports 0 published products — SA region not yet linked to default sales channel (owner completes in Admin).
+- Deployment to AWS EC2: STOPPED at verified discovery — no authorized AWS identity; get-caller-identity empty; default region unset; profile agent-toolkit unconfigured; dash# instance unknown. No billable resources created; no secrets exposed; .env (local) untracked; .env.example tracked with placeholders.
+- Next: provide AWS identity + region, confirm dash# instance, complete region link in Admin, approve deployment method.
+
+
+## Sprint 02 — Verified EC2 target (`i-05a80ef6bae076027`, eu-north-1)
+- Read-only SSM: OS Ubuntu 24.04.5 LTS (aarch64); RAM ~904Mi (~617Mi avail); Swap 0B; Disk 29G total / 2.3G used (9%); 2 CPU cores (t4g.micro).
+- Running services: acpid, chrony, cron, dbus, fwupd (no application services); listening ports only :22 (SSH) + lo:53 (DNS); no 9000/5432/6379/80/443.
+- Software: node/npm/postgresql-client/docker not installed; PostgreSQL service not running; SSM agent online (`VoltMarketMedusaSSMInstanceProfile`).
+- Existing database: none in `eu-north-1` (RDS empty); instance-level PostgreSQL required if co-located (adequate for small Medusa with SA region).
+- Security: SG `volt-market-medusa-dev-sg` (`SSM only`) — ingress changes require approval; public IP exists (`13.49.227.22`).
+- Proposed architecture (pending approval): co-locate PostgreSQL + Medusa on instance (30GB gp3); systemd supervisor; build from `npm run build`; SG ingress change (only if public endpoint approved); TLS/DNS change (no Route53 zone; new zone/domain requires approval); production secrets via approved secret store (not `.env`); rollback via volume snapshot + service restart.
+

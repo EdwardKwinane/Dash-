@@ -90,3 +90,6 @@ Not yet applicable. Before any public launch the owner must: choose a domain and
 - Decisions: `DECISIONS.md`
 - Operations: `RUNBOOK.md`
 - Security: `SECURITY.md` / `THREAT_MODEL.md`
+
+[Sprint 02 — verified 2026-10-25] Local seed workflow: cd apps/backend && npx medusa exec ./src/scripts/seed-dash-catalogue.ts (idempotent, 2 runs clean). DB state confirmed via psql: 2 regions, 11 categories, 10 products, 6 Dash# SKUs. No dashboard/Admin changes needed for seed. Healthcare endpoint localhost:9000/health returns OK; admin /app returns 200. No storefront changes — dash-app/ untouched. AWS deployment still blocked (no identity); once available use systemd/static deployment on existing EC2; reuse suitable RDS if any; do not create new billable resources until owner approves.
+

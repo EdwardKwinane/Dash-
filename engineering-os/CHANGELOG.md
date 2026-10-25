@@ -299,3 +299,16 @@ All core standards (Security, Privacy, Architecture, AI_ENGINEERING, Deployment,
 
 ### Rationale
 Align the OS with current agentic development practice (Claude Code, Codex, Cursor, OpenCode, Vercel AI Cloud) while preserving the rigor that already made v4.1 production-capable.
+=== CHANGING LOG (append) ===
+
+## 2026-10-25 — Sprint 02 — South Africa region + Dash# catalogue seed
+- DB verified pre-change: region=Europe/eur only; categories=4 (scaffold); products=4 (scaffold).
+- Added South Africa region (`zar`, country `za`, name South Africa) via seed script; preserved Europe/EUR.
+- Created 7 Dash# categories + 6 Dash# products (SKUs verified: SMS-GS25U-256, APP-MBP14-M4-512, SON-WH1000XM5-BLK, APP-IPAIR11-M3-128, LOG-MXM3S-GRY, DEL-XPS13P-512); prices in integer ZAR cents.
+- Seed idempotency fixed (query `product_variant.sku` instead of non-existent `product.sku`); 2nd run clean ("All 6 Dash# products already exist; nothing to create").
+- Tax automation disabled (owner confirmation pending); delivery rates set 0 (documented, not fabricated).
+- Inventory values (15/8/25/20/50/12) retained only as demo fixtures; clearly labelled.
+- Dell XPS 13 Plus image mismatch remains open; deferred to Sprint 04.
+- `.env` (local only) not tracked; `.env.example` tracked (placeholders); `.env` in `.gitignore`.
+- Existing storefront unchanged (123/123 tests pass; build clean); `dash-app/` untouched.
+- Admin /health verified 200; seed script at apps/backend/src/scripts/seed-dash-catalogue.ts.
