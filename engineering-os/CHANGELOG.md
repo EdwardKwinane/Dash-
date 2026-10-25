@@ -1,5 +1,33 @@
 # CHANGELOG
 
+## Homepage visual polish — hero showcase, category discovery, product cards (2026-10-25)
+
+Branch: `feature/storefront-quality-sprint`, stacked on the navbar2 sprint. Not pushed.
+
+### What changed
+- `dash-app/src/app/page.tsx`:
+  - The hero's right-hand dev-stats panel was replaced by a **featured-product showcase card** built from real catalogue data (first `featured` product: image, name, formatted ZAR price, "View product" link to `/products/samsung-galaxy-s25-ultra`). The honest demo-data facts are folded into a compact caption line under the CTAs: `7 categories · 6 products · prices in ZAR · seeded demo data`.
+  - **Category cards are now visual**: each of the seven category cards shows a representative product image from that category's real products (`alt=""` — decorative, the adjacent heading conveys meaning), the real product count, and the existing description. Categories with zero products ("Speakers & Audio", "Monitors & Displays") get an honest "New products arrive here first" surface instead of a misleading image.
+  - Section rhythm unified to `py-12` with aligned heading + sub-copy and "View all" links already backed by `/products`.
+  - The featured grid changed from 4 to `lg:grid-cols-3` (3 real featured products) and the new-arrivals grid from a claimed 4-col to 3-col with only the 2 real arrivals — no unbalanced empty halves.
+  - Thesr-only `assurance-heading` is now a real `<h2>` with the third card's heading hierarchy corrected (no skipped levels).
+- `dash-app/src/components/product/product-card.tsx`: **brand kicker** (uppercase, tracking-wide), title `line-clamp-2` so long names wrap cleanly with even card heights, a "View details →" footer strip, visible-focus border on the card link, and the previously-unused `priority` prop is now actually applied to the image (`fetchpriority` for the first card / LCP).
+- `dash-app/src/lib/data/products.ts`: added `getProductsInCategory()` so the homepage derives category membership from the same source as `/categories/[slug]` (single source of truth; no duplicated filter logic).
+- Created `dash-app/e2e/homepage-visual.spec.ts` (4 tests: hero CTA + showcase navigation, real category card counts → real slug, shared card behaviour, mobile no-overflow).
+- No dependency changes; Tailwind stays v3.4.19 (ADR-001); no root `loading.tsx` added (ADR-008).
+
+### Files
+- Changed: `dash-app/src/app/page.tsx`, `dash-app/src/components/product/product-card.tsx`, `dash-app/src/lib/data/products.ts`.
+- Created: `dash-app/e2e/homepage-visual.spec.ts`.
+
+### Verified
+- `npm run lint` → exit 0; `npx tsc --noEmit` → exit 0; `npm test` → **107 tests passed**; `npm run build` → success; `npx playwright test` → **15 passed** (the 4 new homepage tests plus the 11 existing navbar/mobile/journey tests).
+- Visual inspection with headless Chrome at **1440px, 768px and 390px** (hero, megamenu, mobile menu, full-page bottom): no horizontal overflow (`scrollWidth === clientWidth` at all three widths), no heading-level skips, no duplicate ids, 0 unlabeled controls, no main images missing `alt`, console clean (no errors, warnings or hydration issues).
+
+### Known limitations
+- The hero showcase image is owner-owned seeded catalogue imagery: the photo shows a Galaxy S21+ while the product name reads "Galaxy S25 Ultra". Left as-is deliberately — no image replacement was authorized.
+- "Speakers & Audio" and "Monitors & Displays" remain zero-product categories and intentionally render the empty-state surface.
+
 ## Navigation rebuild — navbar2 mega-menu (2026-10-25)
 
 Branch: `feature/storefront-quality-sprint`, stacked on the quality sprint. Not pushed.

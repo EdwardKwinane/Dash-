@@ -1,6 +1,6 @@
 # HOW_IT_WORKS.md — Human-Readable System Guide
 
-Version: 1.3
+Version: 1.4
 Status: Active
 Last updated: 2026-10-25
 
@@ -25,8 +25,8 @@ Explain the product and its operation to a competent human who did not build it.
 ### Flow 2 — Browse the catalogue
 1. User opens `/products`, optionally with filters in the URL.
 2. The page uses the same parser/filter/sort functions as search, so counts and behaviour are identical.
-3. Clicking a category on the homepage goes to `/categories/[slug]`, which shows that category's products and links into the filtered catalogue.
-4. Clicking a card goes to `/products/[slug]`.
+3. Homepage category cards list each route with a representative product image, an honest product count derived from the same `getProductsInCategory()` source as the category pages, and an explicit empty-state for categories without products; the hero showcases the first featured product with its real price.
+4. Clicking a card goes to `/categories/[slug]` or `/products/[slug]`.
 
 ### Flow 3 — View a product
 1. `/products/[slug]` is a server component with `generateStaticParams` and `dynamicParams = false`; only slugs in the seeded catalogue exist.

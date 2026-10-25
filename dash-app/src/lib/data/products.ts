@@ -176,3 +176,9 @@ export function getProductById(id: string): Product | undefined {
 export function getProductBySlug(slug: string): Product | undefined {
   return products.find((product) => product.slug === slug);
 }
+
+/** Category membership is derived from the product record, so listings and
+ * category pages can never disagree about where a product belongs. */
+export function getProductsInCategory(categoryName: string): Product[] {
+  return products.filter((product) => product.category === categoryName);
+}
